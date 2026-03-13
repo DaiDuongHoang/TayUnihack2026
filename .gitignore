@@ -205,3 +205,33 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Môi trường ảo (Quan trọng nhất)
+.venv/
+venv/
+env/
+
+# Python bytecode (rác khi chạy code)
+__pycache__/
+*.py[cod]
+
+# Database (Để mỗi máy tự tạo database riêng, tránh xung đột)
+*.db
+*.sqlite3
+
+# Cấu hình cá nhân của IDE
+.vscode/
+.idea/
+
+# File chứa thông tin nhạy cảm (API Keys)
+.env
+
+# Dữ liệu lớn (Dành cho nhóm làm Computer Vision)
+datasets/
+models/*.pt
+models/*.h5
+
+# File tạm của hệ điều hành
+Thumbs.db
+.DS_Store
