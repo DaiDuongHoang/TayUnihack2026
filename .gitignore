@@ -235,3 +235,7 @@ models/*.h5
 # File tạm của hệ điều hành
 Thumbs.db
 .DS_Store
+
+# Jupyter Notebook (Nếu không muốn chia sẻ notebook, hoặc để tránh xung đột khi làm việc nhóm)
+*.ipynb
+.ipynb_checkpoints/
