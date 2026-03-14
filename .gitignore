@@ -229,7 +229,6 @@ __pycache__/
 
 # Large datasets and model files 
 datasets/
-models/*.pt
 models/*.h5
 
 # mongoDB
@@ -246,7 +245,8 @@ Thumbs.db
 runs/
 
 # Ignore YOLOv8 models
-*.pt
+yolov8m-cls.pt
+yolov8n-cls.pt
 
 # Ignore testing operations
 *testing*
