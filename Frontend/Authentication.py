@@ -1,5 +1,7 @@
 import streamlit as st
 import importlib
+import base64
+from pathlib import Path
 
 # Optional backend integration.
 # Update BACKEND_MODULE if your backend file uses a different module name.
@@ -87,28 +89,66 @@ def _set_local_session(profile: dict) -> None:
     st.session_state.local_user_name = profile.get("first_name") or "User"
 
 
+def _inject_auth_styles() -> None:
+    icon_path = Path(__file__).resolve().parent.parent / "logo" / "icon.png"
+    if not icon_path.exists():
+        return
+
+    icon_base64 = base64.b64encode(icon_path.read_bytes()).decode("utf-8")
+    st.markdown(
+        f"""
+        <style>
+        .st-key-google_login_button button,
+        .st-key-google_register_button button {{
+            background-color: #ffffff !important;
+            color: #1f1f1f !important;
+            border: 1px solid #dadce0 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            background-image: url("data:image/png;base64,{icon_base64}") !important;
+            background-repeat: no-repeat !important;
+            background-position: 14px center !important;
+            background-size: 20px 20px !important;
+            padding-left: 44px !important;
+        }}
+
+        .st-key-google_login_button button:hover,
+        .st-key-google_register_button button:hover {{
+            border-color: #c6c9cc !important;
+            box-shadow: 0 1px 2px rgba(60, 64, 67, 0.2) !important;
+        }}
+
+        .st-key-local_register_submit button {{
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def login_screen(
     title: str = "This app is private",
     description: str = "Sign in with Google or use a local account.",
 ) -> None:
+    _inject_auth_styles()
     st.header(title)
     st.write(description)
 
     login_tab, register_tab = st.tabs(["Log in", "Register"])
 
     with login_tab:
-        st.subheader("Google login")
-        st.button("Log in with Google", on_click=st.login, use_container_width=True)
-        st.caption(
-            "Google login requires Streamlit auth settings in .streamlit/secrets.toml."
-        )
-
-        st.divider()
         st.subheader("Local login")
         with st.form("local_login_form"):
             email = st.text_input("Email", placeholder="Enter your email address")
             password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Log in", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Log in",
+                use_container_width=True,
+                type="primary",
+                key="local_login_submit",
+            )
 
         if submitted:
             is_valid, message, profile = authenticate_local_user(email, password)
@@ -121,8 +161,22 @@ def login_screen(
             else:
                 st.error(message)
 
+        st.caption("Or continue with Google")
+        st.button(
+            "Log in with Google",
+            on_click=st.login,
+            use_container_width=True,
+            key="google_login_button",
+        )
+        st.caption(
+            "Google login requires Streamlit auth settings in .streamlit/secrets.toml."
+        )
+
     with register_tab:
         st.subheader("Create local account")
+        st.info(
+            "Password rule: at least 8 characters, with 1 uppercase letter, 1 lowercase letter, and 1 number."
+        )
         with st.form("local_register_form"):
             first_name = st.text_input(
                 "First name", placeholder="Enter your first name"
@@ -131,7 +185,10 @@ def login_screen(
             password = st.text_input("Password", type="password")
             confirm_password = st.text_input("Confirm password", type="password")
             submitted = st.form_submit_button(
-                "Create account", use_container_width=True
+                "Create account",
+                use_container_width=True,
+                type="primary",
+                key="local_register_submit",
             )
 
         st.caption("Local passwords are stored using salted PBKDF2-SHA256 hashing.")
@@ -152,6 +209,16 @@ def login_screen(
                     st.rerun()
                 else:
                     st.error(message)
+
+        st.button(
+            "Sign up with Google",
+            on_click=st.login,
+            use_container_width=True,
+            key="google_register_button",
+        )
+        st.caption(
+            "Google registration requires Streamlit auth settings in .streamlit/secrets.toml."
+        )
 
 
 def authenticated_view() -> None:
