@@ -71,6 +71,18 @@ class WeatherChartFactory:
 			"$schema": "https://vega.github.io/schema/vega-lite/v5.json",
 			"height": 430,
 			"data": {"values": chart_values},
+			"params": [
+				{
+					"name": "hover",
+					"select": {
+						"type": "point",
+						"fields": ["time_label"],
+						"nearest": True,
+						"on": "mousemove",
+						"clear": "mouseout",
+					},
+				}
+			],
 			"encoding": {
 				"x": {"field": "time_label", "type": "ordinal", "title": "Hour", "sort": None}
 			},
@@ -90,6 +102,18 @@ class WeatherChartFactory:
 							{"field": "humidity", "type": "quantitative", "title": "Humidity (%)"},
 							{"field": "wind_kmh", "type": "quantitative", "title": "Wind (km/h)"},
 						],
+					},
+				},
+				{
+					"transform": [{"filter": {"param": "hover", "empty": False}}],
+					"mark": {
+						"type": "rule",
+						"strokeDash": [6, 4],
+						"color": "#64748b",
+						"size": 2,
+					},
+					"encoding": {
+						"x": {"field": "time_label", "type": "ordinal"}
 					},
 				},
 				{
@@ -125,6 +149,10 @@ class WeatherChartFactory:
 							{"field": "description", "type": "nominal", "title": "Condition"},
 							{"field": "time_label", "type": "nominal", "title": "Time"},
 						],
+						"opacity": {
+							"condition": {"param": "hover", "value": 1},
+							"value": 0.85,
+						},
 					},
 				},
 			],
@@ -140,11 +168,11 @@ class WeatherChartFactory:
 		for row in hourly_rows:
 			display_rows.append(
 				{
-					"Time": row["time"].strftime("%a %H:%M"),
-					"Temp (C)": row["temperature_c"],
-					"Humidity (%)": row["humidity"],
-					"Wind (km/h)": row["wind_kmh"],
-					"Description": row["description"],
+					"🕒 Time": row["time"].strftime("%a %H:%M"),
+					"🌡️ Temp (C)": row["temperature_c"],
+					"💧 Humidity (%)": row["humidity"],
+					"💨 Wind (km/h)": row["wind_kmh"],
+					"☁️ Description": row["description"],
 				}
 			)
 		return display_rows
@@ -196,8 +224,8 @@ class WeatherPage:
 		st.markdown(
 			f"""
 			<div class="weather-shell">
-				<div class="weather-title">Weather Overview</div>
-				<div class="weather-subtitle">Melbourne, AU | Updated {datetime.now().strftime('%d %b %Y, %H:%M')}</div>
+				<div class="weather-title">🌤️ Weather Overview</div>
+				<div class="weather-subtitle">📍 Melbourne, AU | 🕒 Updated {datetime.now().strftime('%d %b %Y, %H:%M')}</div>
 			</div>
 			""",
 			unsafe_allow_html=True,
@@ -210,28 +238,31 @@ class WeatherPage:
 		unique_conditions = len({row["description"] for row in hourly_rows})
 
 		m1, m2, m3, m4 = st.columns(4)
-		m1.metric("Current Temp", f"{current_temp:.1f} C")
-		m2.metric("Avg Humidity", f"{avg_humidity}%")
-		m3.metric("Peak Wind", f"{max_wind:.1f} km/h")
-		m4.metric("Condition Types", f"{unique_conditions}")
+		m1.metric("🌡️ Current Temp", f"{current_temp:.1f} C")
+		m2.metric("💧 Avg Humidity", f"{avg_humidity}%")
+		m3.metric("💨 Peak Wind", f"{max_wind:.1f} km/h")
+		m4.metric("☁️ Condition Types", f"{unique_conditions}")
 
 	def _render_large_forecast_chart(self, hourly_rows: list[dict[str, Any]]) -> None:
-		st.markdown("### Next 24 Hours")
-		st.caption("Large forecast view with weather descriptions, similar to a weather app timeline.")
+		st.markdown("### 📈 Next 24 Hours")
+		st.caption("🌡️ Temperature trend for the next 24 hours.")
 
-		large_chart = WeatherChartFactory.build_large_chart(hourly_rows)
-		st.vega_lite_chart(large_chart, use_container_width=True)
+		chart_data = {
+			"Time": [row["time"].strftime("%H:%M") for row in hourly_rows],
+			"Temperature (C)": [row["temperature_c"] for row in hourly_rows],
+		}
+		st.line_chart(chart_data, x="Time", y="Temperature (C)", use_container_width=True)
 
 	def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
-		st.markdown("### Hourly Details")
+		st.markdown("### 🗂️ Hourly Details")
 		display_rows = WeatherChartFactory.build_table_rows(hourly_rows)
 		st.dataframe(display_rows, use_container_width=True, hide_index=True)
 
 	def _render_integration_notes(self) -> None:
-		with st.expander("Notes for API Integration", expanded=False):
-			st.write("Replace MockWeatherRepository.get_hourly_forecast() with real API response parsing.")
-			st.write("Keep fields: time, temperature_c, humidity, wind_kmh, description.")
-			st.write("Chart and metric rendering can stay unchanged after API wiring.")
+		with st.expander("🛠️ Notes for API Integration", expanded=False):
+			st.write("🔁 Replace MockWeatherRepository.get_hourly_forecast() with real API response parsing.")
+			st.write("📦 Keep fields: time, temperature_c, humidity, wind_kmh, description.")
+			st.write("✅ Chart and metric rendering can stay unchanged after API wiring.")
 
 
 weather_page = WeatherPage(weather_repository=MockWeatherRepository())
