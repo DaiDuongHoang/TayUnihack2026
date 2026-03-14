@@ -11,7 +11,7 @@ statsPage = st.Page("stats.py", title="Statistics", icon="📊")
 wardrobePage = st.Page("wardrobe.py", title="Wardrobe", icon="👕")
 weatherPage = st.Page("weather.py", title="Weather", icon="🌦️")
 
-pg = st.navigation([locationPage, mainDashboardPage, statsPage, wardrobePage])
+pg = st.navigation([locationPage, mainDashboardPage, statsPage, wardrobePage, weatherPage])
 pg.run()
 
 col1, col2 = st.columns(2)
