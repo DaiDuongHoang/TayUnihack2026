@@ -495,6 +495,11 @@ class WeatherPage:
 				opacity: 0;
 			}
 
+			/* Apply to alerts (success/warning/info/error) */
+			div[data-testid="stAlert"] {
+				animation: slideFadeDown 0.4s ease forwards;
+			}
+
 			/* Stagger for buttons */
 			div[data-testid="stButton"]:nth-child(1) button { animation-delay: 0.0s; }
 			div[data-testid="stButton"]:nth-child(2) button { animation-delay: 0.1s; }
