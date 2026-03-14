@@ -12,27 +12,26 @@ def get_connection():
 
 def init_db():  
     with get_connection() as conn:
-        # Bảng Users: Lưu thông tin tài khoản và Cache thời tiết
-        # Tác dụng: Quản lý riêng biệt từng người dùng và tiết kiệm lượt gọi API
+# Users Table: Stores account information and weather cache
+# Function: Manages each user separately and saves API calls
         conn.execute("""CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             location TEXT DEFAULT 'Hanoi',
-            last_at_temp REAL,           -- Lưu nhiệt độ AT gần nhất
-            last_weather_update TIMESTAMP -- Lưu thời gian để biết khi nào cần gọi API mới
+            last_at_temp REAL,           -- Save the most recent AT temperature
+            last_weather_update TIMESTAMP -- Save time to know when to call new API
         )""")
 
-        # Bảng Clothes: Lưu tủ đồ (Wardrobe)
-        # Tác dụng: Lưu trữ phân loại AI (category), màu sắc và ngưỡng nhiệt độ phù hợp
+        # Wadrobe
+        # Function: Store classification, color and appropriate temperature threesholds
         conn.execute("""CREATE TABLE IF NOT EXISTS clothes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
             category TEXT,      -- Blazer, T-shirt, Hoodie...
-            color_tone TEXT,    -- Light / Dark
-            min_temp INTEGER,   -- Ngưỡng lạnh nhất món này chịu được
-            max_temp INTEGER,   -- Ngưỡng nóng nhất món này còn thấy thoải mái
-            image_path TEXT,    -- Đường dẫn ảnh chụp từ điện thoại
+            color TEXT,    -- Red, Blue,...
+            appropriate_weather -- hot/cold
+            image_path TEXT,    -- image
             FOREIGN KEY (user_id) REFERENCES users (id)
         )""")
         conn.commit()
@@ -45,8 +44,8 @@ from datetime import datetime, timedelta
 
 def calculate_apparent_temp(t, rh, ws):
     """
-    Công thức tính Nhiệt độ cảm nhận (Apparent Temperature - AT)
-    t: Nhiệt độ (°C), rh: Độ ẩm (%), ws: Tốc độ gió (m/s)
+    Apparent Temperature - AT
+    t: Temperature (°C), rh: humidity (%), ws: wind speed (m/s)
     """
     # Tính áp suất hơi nước (e) - yếu tố cực quan trọng gây cảm giác oi bức
     e = (rh / 100) * 6.105 * math.exp((17.27 * t) / (237.7 + t))
@@ -105,7 +104,7 @@ def add_new_clothes(user_id, category, color, img_path):
     min_t, max_t = temp_ranges.get(category, (15, 30)) # Mặc định nếu không rõ loại
 
     with get_connection() as conn:
-        conn.execute("""INSERT INTO clothes (user_id, category, color_tone, min_temp, max_temp, image_path)
+        conn.execute("""INSERT INTO clothes (user_id, category, color, min_temp, max_temp, image_path)
                      VALUES (?, ?, ?, ?, ?, ?)""", (user_id, category, color, min_t, max_t, img_path))
 
 def get_outfit_suggestion(user_id):
