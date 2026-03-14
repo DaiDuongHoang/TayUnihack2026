@@ -241,3 +241,6 @@ Thumbs.db
 
 # Ignores dataset files
 *.csv
+
+# Ignores log files
+secrets.toml
