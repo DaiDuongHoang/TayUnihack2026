@@ -1,7 +1,7 @@
 import streamlit as st
 from Authentication import is_authenticated, login_screen
 from data_backend import get_user_catalog
-from mainPage import add_clothe_item
+from dashboard import add_clothe_item
 
 danger_delete_button = None
 
