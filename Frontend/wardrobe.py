@@ -1,7 +1,11 @@
 import streamlit as st
+import time
 from Authentication import is_authenticated, login_screen
 from data_backend import get_user_catalog
 from mainPage import add_clothe_item
+
+danger_delete_button = None
+LOG_DURATION_SECONDS = 3.8
 
 if not is_authenticated():
     login_screen(

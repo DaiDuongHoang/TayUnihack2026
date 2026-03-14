@@ -338,10 +338,6 @@ if st.button("**Save Changes**", use_container_width=True, type="primary"):
             st.session_state.saved_country,
             st.session_state.saved_city,
         )
-    st.markdown(
-        "<div class='saved-pill'>✅ Location saved!</div>",
-        unsafe_allow_html=True,
-    )
     st.session_state.location_saved_logs.append(
         {
             "id": time.time_ns(),

@@ -408,18 +408,23 @@ def get_smart_weather(user_id: int) -> float:
 
 
 def add_clothing_item(
-    email: str,
+    email: str | None,
     item_name: str,
     cloth_type: str | None = None,
     color: str | None = None,
     image_data: bytes | None = None,
     wardrobe_category: str | None = None,
+    username: str | None = None,
 ) -> int:
     clean_name = item_name.strip()
     if not clean_name:
         raise ValueError("Item name is required")
 
-    user_id = _resolve_user_id(email)
+    resolved_email = (email or username or "").strip()
+    if not resolved_email:
+        raise ValueError("Email is required")
+
+    user_id = _resolve_user_id(resolved_email)
     resolved_category = wardrobe_category or WARDROBE_CATEGORY_BY_CLOTH_TYPE.get(
         cloth_type, "Accessories ⌚"
     )
