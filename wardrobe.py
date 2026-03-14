@@ -148,12 +148,13 @@ categories = list(st.session_state.catalog.keys())
 st.title("👗 My Wardrobe")
 st.divider()
 
-if st.button(
-    "➕ Add Item", key="add_item_button", type="primary", use_container_width=True
-):
-    add_clothe_item()
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
+    if st.button(
+        "➕ Add Item", key="add_item_button", type="primary", use_container_width=True
+    ):
+        add_clothe_item()
+
     row1 = st.columns(2, border=True)
     row2 = st.columns(2, border=True)
     grid = [row1[0], row1[1], row2[0], row2[1]]
