@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import streamlit as st
@@ -118,7 +118,9 @@ class OpenWeatherRepository:
             if not dt_ts:
                 continue
 
-            forecast_time = datetime.utcfromtimestamp(dt_ts) + timedelta(
+            forecast_time = datetime.fromtimestamp(dt_ts, tz=timezone.utc).replace(
+                tzinfo=None
+            ) + timedelta(
                 seconds=self.timezone_offset_seconds
             )
 
@@ -165,7 +167,8 @@ class OpenWeatherRepository:
     ) -> list[dict[str, Any]]:
         known_points = sorted(known_points, key=lambda row: row["time"])
         start_time = (
-            datetime.utcnow() + timedelta(seconds=self.timezone_offset_seconds)
+            datetime.now(timezone.utc).replace(tzinfo=None)
+            + timedelta(seconds=self.timezone_offset_seconds)
         ).replace(minute=0, second=0, microsecond=0)
         hourly_rows: list[dict[str, Any]] = []
 
@@ -261,7 +264,9 @@ class OpenWeatherRepository:
         )
 
         return {
-            "time": datetime.utcfromtimestamp(dt_ts)
+            "time": datetime.fromtimestamp(dt_ts, tz=timezone.utc).replace(
+                tzinfo=None
+            )
             + timedelta(seconds=self.timezone_offset_seconds),
             "temperature_c": round(float(main.get("temp", 0.0)), 1),
             "humidity": int(main.get("humidity", 0)),
@@ -598,7 +603,7 @@ class WeatherPage:
         offset = timedelta(
             seconds=int(getattr(self.weather_repository, "timezone_offset_seconds", 0))
         )
-        return datetime.utcnow() + offset
+        return datetime.now(timezone.utc).replace(tzinfo=None) + offset
 
     def _render_styles(self) -> None:
         st.html(
@@ -656,15 +661,45 @@ class WeatherPage:
                 box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
             }
 
-            /* Refresh live weather button — matches wardrobe.py button animation */
+            /* Dedicated animation for weather refresh icon button */
+            @keyframes refreshButtonFloat {
+                0%,
+                100% {
+                    transform: translateY(0);
+                }
+                50% {
+                    transform: translateY(-5px);
+                }
+            }
+
+            @keyframes refreshButtonWiggle {
+                0% {
+                    transform: translateX(-2px) scale(1.05) rotate(0deg);
+                }
+                25% {
+                    transform: translateX(-4px) scale(1.06) rotate(-1deg);
+                }
+                50% {
+                    transform: translateX(-2px) scale(1.07) rotate(1deg);
+                }
+                75% {
+                    transform: translateX(-4px) scale(1.06) rotate(-1deg);
+                }
+                100% {
+                    transform: translateX(-2px) scale(1.05) rotate(0deg);
+                }
+            }
+
             .st-key-refresh_weather_button button {
-                animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                animation: refreshButtonFloat 2.2s ease-in-out infinite;
+                border: 1px solid rgba(59, 130, 246, 0.35);
+                transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.25s cubic-bezier(0.22, 1, 0.36, 1);
             }
 
             .st-key-refresh_weather_button button:hover {
-                transform: translateY(-5px) scale(1.11);
-                box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
+                animation: refreshButtonWiggle 0.9s ease-in-out infinite;
+                box-shadow: 0 10px 22px rgba(59, 130, 246, 0.45);
+                filter: brightness(1.08) saturate(1.12);
             }
 
             /* Weather page visual shell styling */
@@ -793,7 +828,10 @@ class WeatherPage:
                 show_live_success = True
 
             if show_live_success:
-                st.toast("Live OpenWeather data loaded.", icon="✅", duration="short")
+                st.markdown(
+                    "<div class='live-success-pill'>Live OpenWeather data loaded.</div>",
+                    unsafe_allow_html=True,
+                )
 
         sync_text = "Last synced: Not synced yet"
         if last_synced_at:
@@ -1051,7 +1089,7 @@ class WeatherPage:
 
         tomorrow_rows = [row for row in hourly_rows if row["time"].date() == tomorrow]
 
-        tab_next, tab_tomorrow = st.tabs(["Next 24 Hours", "Tomorrow"])
+        tab_next, tab_tomorrow = st.tabs(["Today", "Tomorrow"])
 
         with tab_next:
             if today_rows:
