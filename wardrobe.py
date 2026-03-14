@@ -32,6 +32,7 @@ if "catalog" not in st.session_state:
 
 categories = list(st.session_state.catalog.keys())
 
+
 # --- Add Clothes Dialog ---
 @st.dialog("Add Clothing Item")
 def add_clothing():
@@ -44,6 +45,7 @@ def add_clothing():
             st.rerun()
         else:
             st.warning("Please fill in both name and image URL.")
+
 
 # --- Delete Clothes Dialog ---
 @st.dialog("Delete Clothing Item")
@@ -60,6 +62,7 @@ def delete_clothing():
             st.rerun()
     else:
         st.info("No items in this category.")
+
 
 # --- Top bar: Title + Action Buttons ---
 title_col, spacer, add_col, del_col = st.columns([6, 1, 0.5, 0.5])
@@ -84,7 +87,9 @@ if st.session_state.selected_category is None:
         with grid[i]:
             st.markdown(f"### {category}")
             st.write(f"{len(st.session_state.catalog[category])} item(s)")
-            if st.button(f"Open {category}", key=f"cat_{category}", use_container_width=True):
+            if st.button(
+                f"Open {category}", key=f"cat_{category}", use_container_width=True
+            ):
                 st.session_state.selected_category = category
                 st.rerun()
 
@@ -107,5 +112,7 @@ else:
                 if i + j < len(items):
                     name, image = items[i + j]
                     with col:
-                        st.markdown(f"#### {name}")  # Adjust # level for size, add more # to decrease font size
+                        st.markdown(
+                            f"#### {name}"
+                        )  # Adjust # level for size, add more # to decrease font size
                         st.image(image)
