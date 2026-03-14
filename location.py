@@ -2,9 +2,73 @@ import streamlit as st
 import pycountry
 import geonamescache
 
+
+st.html("""
+<style>
+/* Slide-fade-DOWN keyframe */
+@keyframes slideFadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Apply to all buttons */
+div[data-testid="stButton"] button {
+    animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Apply to bordered column/grid boxes */
+div[data-testid="stColumn"] {
+    animation: slideFadeDown 0.4s ease forwards;
+}
+
+/* Apply to st.container(border=True) boxes */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    animation: slideFadeDown 0.4s ease forwards;
+    opacity: 0;
+}
+
+/* Apply to horizontal divider */
+div[data-testid="stDivider"] {
+    animation: slideFadeDown 0.4s ease 0.3s forwards;
+    opacity: 0;
+}
+
+/* Stagger for buttons */
+div[data-testid="stButton"]:nth-child(1) button { animation-delay: 0.0s; }
+div[data-testid="stButton"]:nth-child(2) button { animation-delay: 0.1s; }
+div[data-testid="stButton"]:nth-child(3) button { animation-delay: 0.2s; }
+div[data-testid="stButton"]:nth-child(4) button { animation-delay: 0.3s; }
+
+/* Stagger for grid boxes (columns) */
+div[data-testid="stColumn"]:nth-child(1) { animation-delay: 0.0s; }
+div[data-testid="stColumn"]:nth-child(2) { animation-delay: 0.1s; }
+div[data-testid="stColumn"]:nth-child(3) { animation-delay: 0.2s; }
+div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
+
+/* Stagger for bordered containers */
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(1) { animation-delay: 0.0s; }
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(2) { animation-delay: 0.1s; }
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(3) { animation-delay: 0.2s; }
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(4) { animation-delay: 0.3s; }
+
+/* Keep hover effect on buttons */
+div[data-testid="stButton"] button:hover {
+    transform: scale(1.03);
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+}
+</style>
+""")
+
 st.set_page_config(page_title="Global Location Dashboard", layout="wide")
 
-st.title("Location Dashboard")
+st.title("🗺️ My Location")
 
 # ==========================================
 # Load country + city data
@@ -110,7 +174,7 @@ st.markdown("")
 if st.button("Save Changes", use_container_width=True):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
-    st.success("Location saved")
+    st.success("Location saved!")
 
 # ==========================================
 # Summary (STREAMLIT VERSION)
