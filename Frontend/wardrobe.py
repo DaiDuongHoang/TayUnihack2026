@@ -155,7 +155,11 @@ if feedback_message:
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
     if st.button(
-        "➕ Add Item", key="add_item_button", type="primary", use_container_width=True
+        "Add Item",
+        key="add_item_button",
+        type="primary",
+        use_container_width=True,
+        icon="➕",
     ):
         add_clothe_item()
 

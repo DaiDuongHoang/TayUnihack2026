@@ -137,7 +137,9 @@ if __name__ == "__main__":
         st.subheader("Please log in.")
         st.button("Log in with Google", on_click=st.login)
 
-    if not st.user.is_logged_in:
+    google_logged_in = bool(getattr(st.user, "is_logged_in", False))
+
+    if not google_logged_in:
         login_screen()
     else:
         st.user
