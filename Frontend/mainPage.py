@@ -114,7 +114,7 @@ def add_clothe_item():
 
     if upload_entry_ready or manual_entry_ready:
         if st.button("Submit", type="primary", use_container_width=True):
-            local_user = st.session_state.get("local_user")
+            local_email = st.session_state.get("local_user")
 
             if has_uploaded_files:
                 category = None
@@ -130,9 +130,9 @@ def add_clothe_item():
                         cloth_type=None,
                         image=image_data,
                     )
-                    if local_user:
+                    if local_email:
                         add_clothing_item(
-                            email=local_user,
+                            email=local_email,
                             item_name=uploaded_item_name,
                             image_data=image_data,
                         )
@@ -145,9 +145,9 @@ def add_clothe_item():
                     cloth_type=selected_cloth_type,
                     color=manual_color,
                 )
-                if local_user:
+                if local_email:
                     add_clothing_item(
-                        email=local_user,
+                        email=local_email,
                         item_name=clean_item_name,
                         cloth_type=selected_cloth_type,
                         color=manual_color,
