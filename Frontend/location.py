@@ -200,9 +200,7 @@ st.set_page_config(page_title="Global Location Dashboard", layout="wide")
 
 st.title("🗺️ My Location")
 
-# ==========================================
 # Load country + city data
-# ==========================================
 gc = geonamescache.GeonamesCache()
 cities_data = gc.get_cities()
 
@@ -236,9 +234,7 @@ for country_name in country_to_cities:
     country_to_cities[country_name] = sorted(list(country_to_cities[country_name]))
 
 
-# ==========================================
 # Helper
-# ==========================================
 def get_countries():
     return all_countries
 
@@ -247,9 +243,7 @@ def get_cities(country):
     return country_to_cities.get(country, [])
 
 
-# ==========================================
 # Session state
-# ==========================================
 countries = get_countries()
 local_user = st.session_state.get("local_user")
 
@@ -293,9 +287,7 @@ if "saved_city" not in st.session_state:
 if "location_saved_logs" not in st.session_state:
     st.session_state.location_saved_logs = []
 
-# ==========================================
 # UI
-# ==========================================
 col1, col2 = st.columns(2)
 
 # Country
@@ -365,9 +357,7 @@ if st.session_state.location_saved_logs:
     saved_logs_html.append("</div>")
     st.markdown("".join(saved_logs_html), unsafe_allow_html=True)
 
-# ==========================================
 # Summary (STREAMLIT VERSION)
-# ==========================================
 
 st.divider()
 
