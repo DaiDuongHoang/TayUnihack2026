@@ -237,5 +237,7 @@ Thumbs.db
 .DS_Store
 
 # Jupyter Notebook files and checkpoints
-*.ipynb
 .ipynb_checkpoints/
+
+# Ignores dataset files
+*.csv
