@@ -213,7 +213,7 @@ feedback_message = st.session_state.pop("wardrobe_feedback", None)
 if feedback_message:
     if feedback_message == "Item deleted.":
         st.toast("**Item deleted**", icon="❌", duration="short")
-    elif feedback_message.startswith("Added "):
+    elif "Added " in feedback_message:
         st.toast(feedback_message, icon="✅", duration="short")
     else:
         st.success(feedback_message)

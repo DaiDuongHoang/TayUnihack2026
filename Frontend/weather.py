@@ -656,45 +656,15 @@ class WeatherPage:
                 box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
             }
 
-            /* Dedicated animation for weather refresh icon button */
-            @keyframes refreshButtonFloat {
-                0%,
-                100% {
-                    transform: translateY(0);
-                }
-                50% {
-                    transform: translateY(-5px);
-                }
-            }
-
-            @keyframes refreshButtonWiggle {
-                0% {
-                    transform: translateX(-2px) scale(1.05) rotate(0deg);
-                }
-                25% {
-                    transform: translateX(-4px) scale(1.06) rotate(-1deg);
-                }
-                50% {
-                    transform: translateX(-2px) scale(1.07) rotate(1deg);
-                }
-                75% {
-                    transform: translateX(-4px) scale(1.06) rotate(-1deg);
-                }
-                100% {
-                    transform: translateX(-2px) scale(1.05) rotate(0deg);
-                }
-            }
-
+            /* Refresh live weather button — matches wardrobe.py button animation */
             .st-key-refresh_weather_button button {
-                animation: refreshButtonFloat 2.2s ease-in-out infinite;
-                border: 1px solid rgba(59, 130, 246, 0.35);
-                transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+                animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
             }
 
             .st-key-refresh_weather_button button:hover {
-                animation: refreshButtonWiggle 0.9s ease-in-out infinite;
-                box-shadow: 0 10px 22px rgba(59, 130, 246, 0.45);
-                filter: brightness(1.08) saturate(1.12);
+                transform: translateY(-5px) scale(1.11);
+                box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
             }
 
             /* Weather page visual shell styling */
@@ -823,10 +793,7 @@ class WeatherPage:
                 show_live_success = True
 
             if show_live_success:
-                st.markdown(
-                    "<div class='live-success-pill'>Live OpenWeather data loaded.</div>",
-                    unsafe_allow_html=True,
-                )
+                st.toast("Live OpenWeather data loaded.", icon="✅", duration="short")
 
         sync_text = "Last synced: Not synced yet"
         if last_synced_at:
