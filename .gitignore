@@ -243,3 +243,6 @@ Thumbs.db
 *.csv
 *yolo_dataset/
 runs/
+
+# Ignore YOLOv8 models
+*.pt
