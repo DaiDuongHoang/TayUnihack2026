@@ -241,8 +241,12 @@ Thumbs.db
 
 # Ignores dataset files
 *.csv
+*dataset.zip
 *yolo_dataset/
 runs/
 
 # Ignore YOLOv8 models
 *.pt
+
+# Ignore testing operations
+*testing*
