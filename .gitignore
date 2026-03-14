@@ -241,3 +241,5 @@ Thumbs.db
 
 # Ignores dataset files
 *.csv
+*yolo_dataset/
+runs/
