@@ -17,6 +17,7 @@ db-sqlite3==0.0.1
 filelock==3.25.2
 fonttools==4.62.1
 fsspec==2026.2.0
+geonamescache==3.0.0
 gitdb==4.0.12
 GitPython==3.1.46
 idna==3.11
@@ -40,6 +41,7 @@ polars-runtime-32==1.39.0
 protobuf==6.33.5
 psutil==7.2.2
 pyarrow==23.0.1
+pycountry==26.2.16
 pycparser==3.0
 pydeck==0.9.1
 pyparsing==3.3.2
