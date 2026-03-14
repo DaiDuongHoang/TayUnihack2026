@@ -2,11 +2,12 @@ import streamlit as st
 
 pages = {
     "Home": [
-        st.Page("Wardrobe", "wardrobe.py"),
-        st.Page("Weather", "weather.py"),
-        st.Page("Location", "location.py"),
+        st.Page("wardrobe.py", title="Wardrobe", icon="👗"),
+        st.Page("weather.py", title="Weather", icon="🌦️"),
+        st.Page("location.py", title="Location", icon="🎈"),
     ]
 }
 
-pg = st.navigation_bar(pages, "Home")
-pg.run()
+pg = st.navigation(pages)
+if __name__ == "__main__":
+    pg.run()
