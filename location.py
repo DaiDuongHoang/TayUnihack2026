@@ -105,14 +105,17 @@ for city_info in cities_data.values():
 for country_name in country_to_cities:
     country_to_cities[country_name] = sorted(list(country_to_cities[country_name]))
 
+
 # ==========================================
 # Helper
 # ==========================================
 def get_countries():
     return all_countries
 
+
 def get_cities(country):
     return country_to_cities.get(country, [])
+
 
 # ==========================================
 # Session state
@@ -141,9 +144,7 @@ col1, col2 = st.columns(2)
 # Country
 with col1:
     selected_country = st.selectbox(
-        "Country",
-        countries,
-        index=countries.index(st.session_state.country)
+        "Country", countries, index=countries.index(st.session_state.country)
     )
 
 if selected_country != st.session_state.country:
@@ -159,7 +160,7 @@ with col2:
         selected_city = st.selectbox(
             "City/Suburb",
             filtered_cities,
-            index=filtered_cities.index(st.session_state.city)
+            index=filtered_cities.index(st.session_state.city),
         )
     else:
         selected_city = ""
@@ -171,7 +172,7 @@ if selected_city != st.session_state.city:
 st.markdown("")
 
 # Save button
-if st.button("Save Changes", use_container_width=True):
+if st.button("**Save Changes**", use_container_width=True, type="primary"):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
     st.success("Location saved!")
@@ -187,17 +188,10 @@ st.subheader("📍 Chosen Location")
 summary_container = st.container(border=True)
 
 with summary_container:
-
     col1, col2 = st.columns(2)
 
     with col1:
-        st.metric(
-            label="Country",
-            value=st.session_state.saved_country or "N/A"
-        )
+        st.metric(label="Country", value=st.session_state.saved_country or "N/A")
 
     with col2:
-        st.metric(
-            label="City/Suburb",
-            value=st.session_state.saved_city or "N/A"
-        )
+        st.metric(label="City/Suburb", value=st.session_state.saved_city or "N/A")
