@@ -156,3 +156,29 @@ def get_outfit_suggestion(user_id):
         query = "SELECT * FROM clothes WHERE user_id = ? AND min_temp <= ? AND max_temp >= ?"
         return conn.execute(query, (user_id, at_temp, at_temp)).fetchall()
 
+
+
+def register_user(username, password, location='Melbourne'):
+    """
+    Tác dụng: Tạo tài khoản mới cho người dùng.
+    Mỗi người dùng sẽ có một ID riêng để quản lý tủ đồ riêng.
+    """
+    with get_connection() as conn:
+        try:
+            conn.execute("""INSERT INTO users (username, password, location) 
+                         VALUES (?, ?, ?)""", (username, password, location))
+            conn.commit()
+            return True
+        except:
+            # Trả về False nếu username đã tồn tại (do ta để UNIQUE trong DB)
+            return False
+
+def login_user(username, password):
+    """
+    Tác dụng: Kiểm tra đăng nhập.
+    Trả về user_id để các hàm sau (gợi ý đồ, thêm đồ) biết là đang phục vụ ai.
+    """
+    with get_connection() as conn:
+        user = conn.execute("SELECT id FROM users WHERE username = ? AND password = ?", 
+                         (username, password)).fetchone()
+        return user['id'] if user else None
