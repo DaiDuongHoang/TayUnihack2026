@@ -148,6 +148,10 @@ categories = list(st.session_state.catalog.keys())
 st.title("👗 My Wardrobe")
 st.divider()
 
+feedback_message = st.session_state.pop("wardrobe_feedback", None)
+if feedback_message:
+    st.success(feedback_message)
+
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
     if st.button(
@@ -191,9 +195,28 @@ else:
             cols = st.columns(num_cols, border=True)
             for j, col in enumerate(cols):
                 if i + j < len(items):
-                    name, image = items[i + j]
+                    item = items[i + j]
+                    if isinstance(item, dict):
+                        name = item.get("name", "Unnamed Item")
+                        image = item.get("image")
+                        color = item.get("color")
+                        cloth_type = item.get("cloth_type")
+                    else:
+                        name, image = item
+                        color = None
+                        cloth_type = None
+
                     with col:
-                        st.markdown(
-                            f"#### {name}"
-                        )  # Adjust # level for size, add more # to decrease font size
-                        st.image(image, width="content")
+                        st.markdown(f"#### {name}")
+
+                        if cloth_type:
+                            st.caption(cloth_type)
+
+                        if image:
+                            st.image(image, width="content")
+                        elif color:
+                            st.markdown(
+                                f"<div style='width: 100%; height: 180px; border-radius: 0.75rem; background: {color}; border: 1px solid rgba(0, 0, 0, 0.08);'></div>",
+                                unsafe_allow_html=True,
+                            )
+                            st.caption(f"Color: {color}")

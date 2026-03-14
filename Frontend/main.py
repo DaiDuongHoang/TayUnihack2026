@@ -8,7 +8,10 @@ pages = {
         st.Page("wardrobe.py", title="Wardrobe", icon="👗"),
         st.Page("weather.py", title="Weather", icon="🌦️"),
         st.Page("location.py", title="Location", icon="🎈"),
-    ]
+    ],
+    #     "Settings": [
+    #         st.Page("settings.py", title="Settings", icon="⚙️"),
+    #     ],
 }
 
 
