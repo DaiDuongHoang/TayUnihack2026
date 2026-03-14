@@ -241,6 +241,14 @@ Thumbs.db
 
 # Ignores dataset files
 *.csv
+<<<<<<< HEAD
 
 # Ignores log files
 secrets.toml
+=======
+*yolo_dataset/
+runs/
+
+# Ignore YOLOv8 models
+*.pt
+>>>>>>> 14bc673b9921094ce355b699197a0c13268b1000
