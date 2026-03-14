@@ -1,28 +1,4 @@
 # database.py
-# import sqlite3
-
-# DB_NAME = "wadrobe.db"
-
-
-# def get_connection():
-#     return sqlite3.connect(DB_NAME)
-
-
-# def init_db():
-#     with get_connection() as conn:
-#         conn.execute("""CREATE TABLE IF NOT EXISTS clothes (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             category TEXT,   -- Hoodie, T-shirt, Short, Pants
-#             color TEXT,
-#             weather_type TEXT, -- Cold, Hot, Rainy
-#             image_path TEXT
-#         )""")
-
-
-# def get_all_clothes():
-#     with get_connection() as conn:
-#         cursor = conn.execute("SELECT * FROM clothes")
-#         return cursor.fetchall()
 
 import sqlite3
 import hashlib
@@ -34,7 +10,7 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
+def init_db():  
     with get_connection() as conn:
         # Bảng Users: Lưu thông tin tài khoản và Cache thời tiết
         # Tác dụng: Quản lý riêng biệt từng người dùng và tiết kiệm lượt gọi API
@@ -58,18 +34,6 @@ def init_db():
             max_temp INTEGER,   -- Ngưỡng nóng nhất món này còn thấy thoải mái
             image_path TEXT,    -- Đường dẫn ảnh chụp từ điện thoại
             FOREIGN KEY (user_id) REFERENCES users (id)
-        )""")
-
-        # Bảng Usage History: Lưu lịch sử mặc đồ
-        # Tác dụng: Cung cấp dữ liệu để làm phần Thống kê (Statistics)
-        conn.execute("""CREATE TABLE IF NOT EXISTS usage_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            clothes_id INTEGER,
-            worn_date DATE DEFAULT CURRENT_DATE,
-            worn_at_temp REAL,
-            FOREIGN KEY (user_id) REFERENCES users (id),
-            FOREIGN KEY (clothes_id) REFERENCES clothes (id)
         )""")
         conn.commit()
     
@@ -182,3 +146,26 @@ def login_user(username, password):
         user = conn.execute("SELECT id FROM users WHERE username = ? AND password = ?", 
                          (username, password)).fetchone()
         return user['id'] if user else None
+    
+    def remove_clothes(clothes_id, user_id):
+        """
+        Tác dụng: Xóa món đồ khỏi tủ đồ cá nhân.
+        Phải truyền user_id để đảm bảo người dùng chỉ xóa được đồ của chính họ.
+        """
+        with get_connection() as conn:
+            conn.execute("DELETE FROM clothes WHERE id = ? AND user_id = ?", (clothes_id, user_id))
+            conn.commit()
+
+
+def update_user_location(user_id, new_location):
+    """
+    Tác dụng: Thay đổi địa điểm của người dùng.
+    Xóa cache thời tiết cũ để hệ thống cập nhật lại theo vùng mới ngay lập tức.
+    """
+    with get_connection() as conn:
+        conn.execute("""
+            UPDATE users 
+            SET location = ?, last_weather_update = NULL 
+            WHERE id = ?
+        """, (new_location, user_id))
+        conn.commit()
