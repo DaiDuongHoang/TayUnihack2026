@@ -60,3 +60,13 @@ def add_clothe_item():
 if __name__ == "__main__":
     if st.button("Add Clothe Item", type="primary"):
         add_clothe_item()
+
+    def login_screen():
+        st.header("This app is private.")
+        st.subheader("Please log in.")
+        st.button("Log in with Google", on_click=st.login)
+
+    if not st.user.is_logged_in:
+        login_screen()
+    else:
+        st.user
