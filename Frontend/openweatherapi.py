@@ -98,4 +98,5 @@ def fetch_weather_bundle(locality: str, country: str = "") -> dict[str, Any]:
 		),
 		"current": current_weather,
 		"forecast": forecast,
+		"timezone_offset": int(current_weather.get("timezone", 0)),
 	}

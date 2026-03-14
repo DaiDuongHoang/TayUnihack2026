@@ -75,6 +75,7 @@ class OpenWeatherRepository:
 		self.used_fallback = False
 		self.error_message = ""
 		self.last_synced_at: datetime | None = None
+		self.timezone_offset_seconds: int = 0
 
 	def get_hourly_forecast(self, hours: int = 24) -> list[dict[str, Any]]:
 		self.used_fallback = False
@@ -84,6 +85,7 @@ class OpenWeatherRepository:
 			weather_bundle = fetch_weather_bundle(self.locality, self.country)
 			payload = weather_bundle["forecast"]
 			current_payload = weather_bundle["current"]
+			self.timezone_offset_seconds = int(weather_bundle.get("timezone_offset", 0))
 		except Exception as exc:
 			self._set_fallback(f"OpenWeather request failed: {exc}")
 			return self.fallback_repository.get_hourly_forecast(hours=hours)
@@ -100,7 +102,7 @@ class OpenWeatherRepository:
 			if not dt_ts:
 				continue
 
-			forecast_time = datetime.fromtimestamp(dt_ts)
+			forecast_time = datetime.utcfromtimestamp(dt_ts) + timedelta(seconds=self.timezone_offset_seconds)
 
 			main = item.get("main", {})
 			wind = item.get("wind", {})
@@ -137,7 +139,7 @@ class OpenWeatherRepository:
 
 	def _build_hourly_rows(self, known_points: list[dict[str, Any]], hours: int) -> list[dict[str, Any]]:
 		known_points = sorted(known_points, key=lambda row: row["time"])
-		start_time = datetime.now().replace(minute=0, second=0, microsecond=0)
+		start_time = (datetime.utcnow() + timedelta(seconds=self.timezone_offset_seconds)).replace(minute=0, second=0, microsecond=0)
 		hourly_rows: list[dict[str, Any]] = []
 
 		for i in range(hours):
@@ -214,7 +216,7 @@ class OpenWeatherRepository:
 		description = weather_list[0].get("description", "Unknown") if weather_list else "Unknown"
 
 		return {
-			"time": datetime.fromtimestamp(dt_ts),
+			"time": datetime.utcfromtimestamp(dt_ts) + timedelta(seconds=self.timezone_offset_seconds),
 			"temperature_c": round(float(main.get("temp", 0.0)), 1),
 			"humidity": int(main.get("humidity", 0)),
 			"wind_kmh": round(float(wind.get("speed", 0.0)) * 3.6, 1),
@@ -414,10 +416,18 @@ class WeatherPage:
 		target_locality = saved_city or "Melbourne"
 		target_country = self._to_country_code(saved_country) if saved_country else "AU"
 
-		current_locality = str(getattr(self.weather_repository, "locality", "")).strip()
-		current_country = str(getattr(self.weather_repository, "country", "")).strip().upper()
+		# Compare against what was actually last fetched, not the freshly-constructed
+		# repository defaults, so day-navigation reruns never bust the cache.
+		cached_meta = st.session_state.get("weather_cached_meta", {})
+		prev_locality = str(cached_meta.get("locality", "")).strip()
+		prev_country = str(cached_meta.get("country", "")).strip().upper()
 
-		if target_locality == current_locality and target_country == current_country:
+		if prev_locality and target_locality == prev_locality and target_country == prev_country:
+			# Location unchanged — keep the existing cache and sync repo attrs.
+			if hasattr(self.weather_repository, "locality"):
+				self.weather_repository.locality = target_locality
+			if hasattr(self.weather_repository, "country"):
+				self.weather_repository.country = target_country
 			return
 
 		if hasattr(self.weather_repository, "locality"):
@@ -425,7 +435,7 @@ class WeatherPage:
 		if hasattr(self.weather_repository, "country"):
 			self.weather_repository.country = target_country
 
-		# Ensure weather fetch uses the newly selected location.
+		# Location changed — invalidate cache so new data is fetched.
 		st.session_state.pop("weather_cached_rows", None)
 		st.session_state.pop("weather_cached_meta", None)
 
@@ -451,6 +461,9 @@ class WeatherPage:
 		meta_key = "weather_cached_meta"
 
 		if cache_key in st.session_state:
+			cached_offset = st.session_state.get(meta_key, {}).get("timezone_offset_seconds", 0)
+			if hasattr(self.weather_repository, "timezone_offset_seconds"):
+				self.weather_repository.timezone_offset_seconds = int(cached_offset)
 			return st.session_state[cache_key]
 
 		rows = self.weather_repository.get_hourly_forecast(hours=hours)
@@ -459,8 +472,15 @@ class WeatherPage:
 			"used_fallback": bool(getattr(self.weather_repository, "used_fallback", False)),
 			"error_message": str(getattr(self.weather_repository, "error_message", "")),
 			"last_synced_at": getattr(self.weather_repository, "last_synced_at", None),
+			"timezone_offset_seconds": int(getattr(self.weather_repository, "timezone_offset_seconds", 0)),
+			"locality": str(getattr(self.weather_repository, "locality", "")),
+			"country": str(getattr(self.weather_repository, "country", "")).upper(),
 		}
 		return rows
+
+	def _location_now(self) -> datetime:
+		offset = timedelta(seconds=int(getattr(self.weather_repository, "timezone_offset_seconds", 0)))
+		return datetime.utcnow() + offset
 
 	def _render_styles(self) -> None:
 		st.html(
@@ -649,7 +669,7 @@ class WeatherPage:
 			unsafe_allow_html=True,
 		)
 
-		today = datetime.now().date()
+		today = self._location_now().date()
 		selected_offset = int(st.session_state.weather_chart_day_offset)
 		selected_date = today + timedelta(days=selected_offset)
 
@@ -658,7 +678,7 @@ class WeatherPage:
 			if selected_offset > 0:
 				if st.button("⬅️ Previous Day", key="chart_prev_day", use_container_width=True):
 					st.session_state.weather_chart_day_offset = max(0, selected_offset - 1)
-					st.rerun()
+
 			else:
 				st.markdown("&nbsp;", unsafe_allow_html=True)
 		with c_label:
@@ -671,7 +691,7 @@ class WeatherPage:
 			if selected_offset < 2:
 				if st.button("Next Day ➡️", key="chart_next_day", use_container_width=True):
 					st.session_state.weather_chart_day_offset = min(2, selected_offset + 1)
-					st.rerun()
+
 			else:
 				st.markdown("&nbsp;", unsafe_allow_html=True)
 
@@ -689,7 +709,7 @@ class WeatherPage:
 	def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
 		st.markdown("### 🕒 Hourly Details")
 
-		today = datetime.now().date()
+		today = self._location_now().date()
 		tomorrow = today + timedelta(days=1)
 		day_after = today + timedelta(days=2)
 		today_rows = [row for row in hourly_rows if row["time"].date() == today]
