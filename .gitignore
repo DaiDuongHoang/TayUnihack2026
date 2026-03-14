@@ -246,6 +246,11 @@ Thumbs.db
 secrets.toml
 *yolo_dataset/
 runs/
+.streamlit/secrets.toml
+**/.streamlit/secrets.toml
+**/.streamlit/secrets.local.toml
+.cursorignore
+.cursorindexingignore
 
 # Ignore YOLOv8 models
 *.pt
