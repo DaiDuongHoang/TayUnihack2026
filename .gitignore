@@ -247,7 +247,7 @@ runs/
 # Ignore YOLOv8 models
 yolov8m-cls.pt
 yolov8n-cls.pt
-
+yolo26n.pt
 
 # Ignore testing operations
 *testing*
