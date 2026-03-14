@@ -67,6 +67,8 @@ def register_user(first_name: str, email: str, password: str) -> tuple[bool, str
 
     if not clean_first_name:
         return False, 'First name is required.'
+    if not re.match(r"^[A-Za-z\s'\-]+$", clean_first_name):
+        return False, 'First name can only contain letters, spaces, hyphens, and apostrophes.'
     if not clean_email:
         return False, 'Email is required.'
     if not EMAIL_PATTERN.match(clean_email):
