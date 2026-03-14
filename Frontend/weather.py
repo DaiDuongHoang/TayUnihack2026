@@ -2,28 +2,36 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import streamlit as st
+from Authentication import is_authenticated, login_screen
+
+if not is_authenticated():
+    login_screen(
+        title="Sign in to view weather",
+        description="Use Google or your local email/password account to continue.",
+    )
+    st.stop()
 
 try:
-	import pycountry
+    import pycountry
 except Exception:
-	pycountry = None
+    pycountry = None
 
 from openweatherapi import fetch_weather_bundle
 
 
 class MockWeatherRepository:
-	"""Provides placeholder weather records until API integration is wired."""
+    """Provides placeholder weather records until API integration is wired."""
 
-	def __init__(self) -> None:
-		self.weather_descriptions = [
-			"Clear",
-			"Few clouds",
-			"Scattered clouds",
-			"Light rain",
-			"Moderate rain",
-			"Heavy rain",
-			"Thunderstorm",
-		]
+    def __init__(self) -> None:
+        self.weather_descriptions = [
+            "Clear",
+            "Few clouds",
+            "Scattered clouds",
+            "Light rain",
+            "Moderate rain",
+            "Heavy rain",
+            "Thunderstorm",
+        ]
 
 	def get_hourly_forecast(self, hours: int = 24) -> list[dict[str, Any]]:
 		now = datetime.now().replace(minute=0, second=0, microsecond=0)
@@ -48,23 +56,23 @@ class MockWeatherRepository:
 				}
 			)
 
-		return rows
+        return rows
 
-	def _pick_description(self, hour: int, offset: int) -> str:
-		if 13 <= hour <= 18:
-			return self.weather_descriptions[3 + (offset % 3)]
-		if 19 <= hour <= 22:
-			return self.weather_descriptions[1 + (offset % 2)]
-		if 4 <= hour <= 8:
-			return self.weather_descriptions[0]
-		return self.weather_descriptions[offset % 3]
+    def _pick_description(self, hour: int, offset: int) -> str:
+        if 13 <= hour <= 18:
+            return self.weather_descriptions[3 + (offset % 3)]
+        if 19 <= hour <= 22:
+            return self.weather_descriptions[1 + (offset % 2)]
+        if 4 <= hour <= 8:
+            return self.weather_descriptions[0]
+        return self.weather_descriptions[offset % 3]
 
-	def get_location_label(self) -> str:
-		return "Melbourne, AU"
+    def get_location_label(self) -> str:
+        return "Melbourne, AU"
 
 
 class OpenWeatherRepository:
-	"""Loads weather forecast from OpenWeather for a configured city."""
+    """Loads weather forecast from OpenWeather for a configured city."""
 
 	def __init__(
 		self,
@@ -81,47 +89,53 @@ class OpenWeatherRepository:
 		self.timezone_offset_seconds: int = 0
 		self.raw_forecast_rows: list[dict[str, Any]] = []
 
-	def get_hourly_forecast(self, hours: int = 24) -> list[dict[str, Any]]:
-		self.used_fallback = False
-		self.error_message = ""
+    def get_hourly_forecast(self, hours: int = 24) -> list[dict[str, Any]]:
+        self.used_fallback = False
+        self.error_message = ""
 
-		try:
-			weather_bundle = fetch_weather_bundle(self.locality, self.country)
-			payload = weather_bundle["forecast"]
-			current_payload = weather_bundle["current"]
-			self.timezone_offset_seconds = int(weather_bundle.get("timezone_offset", 0))
-		except Exception as exc:
-			self._set_fallback(f"OpenWeather request failed: {exc}")
-			return self.fallback_repository.get_hourly_forecast(hours=hours)
+        try:
+            weather_bundle = fetch_weather_bundle(self.locality, self.country)
+            payload = weather_bundle["forecast"]
+            current_payload = weather_bundle["current"]
+            self.timezone_offset_seconds = int(weather_bundle.get("timezone_offset", 0))
+        except Exception as exc:
+            self._set_fallback(f"OpenWeather request failed: {exc}")
+            return self.fallback_repository.get_hourly_forecast(hours=hours)
 
-		items = payload.get("list", [])
-		if not items:
-			self._set_fallback("OpenWeather response did not contain forecast items.")
-			return self.fallback_repository.get_hourly_forecast(hours=hours)
+        items = payload.get("list", [])
+        if not items:
+            self._set_fallback("OpenWeather response did not contain forecast items.")
+            return self.fallback_repository.get_hourly_forecast(hours=hours)
 
-		rows: list[dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
 
-		for item in items:
-			dt_ts = item.get("dt")
-			if not dt_ts:
-				continue
+        for item in items:
+            dt_ts = item.get("dt")
+            if not dt_ts:
+                continue
 
-			forecast_time = datetime.utcfromtimestamp(dt_ts) + timedelta(seconds=self.timezone_offset_seconds)
+            forecast_time = datetime.utcfromtimestamp(dt_ts) + timedelta(
+                seconds=self.timezone_offset_seconds
+            )
 
-			main = item.get("main", {})
-			wind = item.get("wind", {})
-			weather_list = item.get("weather", [])
-			description = weather_list[0].get("description", "Unknown") if weather_list else "Unknown"
+            main = item.get("main", {})
+            wind = item.get("wind", {})
+            weather_list = item.get("weather", [])
+            description = (
+                weather_list[0].get("description", "Unknown")
+                if weather_list
+                else "Unknown"
+            )
 
-			rows.append(
-				{
-					"time": forecast_time,
-					"temperature_c": round(float(main.get("temp", 0.0)), 1),
-					"humidity": int(main.get("humidity", 0)),
-					"wind_kmh": round(float(wind.get("speed", 0.0)) * 3.6, 1),
-					"description": description.title(),
-				}
-			)
+            rows.append(
+                {
+                    "time": forecast_time,
+                    "temperature_c": round(float(main.get("temp", 0.0)), 1),
+                    "humidity": int(main.get("humidity", 0)),
+                    "wind_kmh": round(float(wind.get("speed", 0.0)) * 3.6, 1),
+                    "description": description.title(),
+                }
+            )
 
 		current_row = self._build_current_row(current_payload)
 		self.raw_forecast_rows = sorted(rows.copy(), key=lambda row: row["time"])
@@ -129,274 +143,326 @@ class OpenWeatherRepository:
 		if current_row is not None:
 			known_points.append(current_row)
 
-		if not known_points:
-			self._set_fallback("No usable hourly rows were parsed from OpenWeather.")
-			return self.fallback_repository.get_hourly_forecast(hours=hours)
+        if not known_points:
+            self._set_fallback("No usable hourly rows were parsed from OpenWeather.")
+            return self.fallback_repository.get_hourly_forecast(hours=hours)
 
-		hourly_rows = self._build_hourly_rows(known_points=known_points, hours=hours)
-		if not hourly_rows:
-			self._set_fallback("Hourly interpolation failed for OpenWeather data.")
-			return self.fallback_repository.get_hourly_forecast(hours=hours)
+        hourly_rows = self._build_hourly_rows(known_points=known_points, hours=hours)
+        if not hourly_rows:
+            self._set_fallback("Hourly interpolation failed for OpenWeather data.")
+            return self.fallback_repository.get_hourly_forecast(hours=hours)
 
-		self.last_synced_at = datetime.now()
+        self.last_synced_at = datetime.now()
 
-		return hourly_rows
+        return hourly_rows
 
-	def _build_hourly_rows(self, known_points: list[dict[str, Any]], hours: int) -> list[dict[str, Any]]:
-		known_points = sorted(known_points, key=lambda row: row["time"])
-		start_time = (datetime.utcnow() + timedelta(seconds=self.timezone_offset_seconds)).replace(minute=0, second=0, microsecond=0)
-		hourly_rows: list[dict[str, Any]] = []
+    def _build_hourly_rows(
+        self, known_points: list[dict[str, Any]], hours: int
+    ) -> list[dict[str, Any]]:
+        known_points = sorted(known_points, key=lambda row: row["time"])
+        start_time = (
+            datetime.utcnow() + timedelta(seconds=self.timezone_offset_seconds)
+        ).replace(minute=0, second=0, microsecond=0)
+        hourly_rows: list[dict[str, Any]] = []
 
-		for i in range(hours):
-			target_time = start_time + timedelta(hours=i)
-			before, after = self._find_bracketing_points(known_points, target_time)
+        for i in range(hours):
+            target_time = start_time + timedelta(hours=i)
+            before, after = self._find_bracketing_points(known_points, target_time)
 
-			if before is None and after is None:
-				continue
-			if before is None:
-				before = after
-			if after is None:
-				after = before
+            if before is None and after is None:
+                continue
+            if before is None:
+                before = after
+            if after is None:
+                after = before
 
-			assert before is not None and after is not None
+            assert before is not None and after is not None
 
-			if before["time"] == after["time"]:
-				ratio = 0.0
-			else:
-				total_seconds = (after["time"] - before["time"]).total_seconds()
-				if total_seconds <= 0:
-					ratio = 0.0
-				else:
-					ratio = (target_time - before["time"]).total_seconds() / total_seconds
-					ratio = max(0.0, min(1.0, ratio))
+            if before["time"] == after["time"]:
+                ratio = 0.0
+            else:
+                total_seconds = (after["time"] - before["time"]).total_seconds()
+                if total_seconds <= 0:
+                    ratio = 0.0
+                else:
+                    ratio = (
+                        target_time - before["time"]
+                    ).total_seconds() / total_seconds
+                    ratio = max(0.0, min(1.0, ratio))
 
-			temperature = self._interpolate_numeric(before["temperature_c"], after["temperature_c"], ratio)
-			humidity = int(round(self._interpolate_numeric(before["humidity"], after["humidity"], ratio)))
-			wind_kmh = self._interpolate_numeric(before["wind_kmh"], after["wind_kmh"], ratio)
-			description = before["description"] if ratio < 0.5 else after["description"]
-			if i > 0 and description.startswith("Now - "):
-				description = description.replace("Now - ", "", 1)
+            temperature = self._interpolate_numeric(
+                before["temperature_c"], after["temperature_c"], ratio
+            )
+            humidity = int(
+                round(
+                    self._interpolate_numeric(
+                        before["humidity"], after["humidity"], ratio
+                    )
+                )
+            )
+            wind_kmh = self._interpolate_numeric(
+                before["wind_kmh"], after["wind_kmh"], ratio
+            )
+            description = before["description"] if ratio < 0.5 else after["description"]
+            if i > 0 and description.startswith("Now - "):
+                description = description.replace("Now - ", "", 1)
 
-			hourly_rows.append(
-				{
-					"time": target_time,
-					"temperature_c": round(temperature, 1),
-					"humidity": humidity,
-					"wind_kmh": round(wind_kmh, 1),
-					"description": description,
-				}
-			)
+            hourly_rows.append(
+                {
+                    "time": target_time,
+                    "temperature_c": round(temperature, 1),
+                    "humidity": humidity,
+                    "wind_kmh": round(wind_kmh, 1),
+                    "description": description,
+                }
+            )
 
-		return hourly_rows
+        return hourly_rows
 
-	def _find_bracketing_points(
-		self,
-		known_points: list[dict[str, Any]],
-		target_time: datetime,
-	) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-		before: dict[str, Any] | None = None
-		after: dict[str, Any] | None = None
+    def _find_bracketing_points(
+        self,
+        known_points: list[dict[str, Any]],
+        target_time: datetime,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        before: dict[str, Any] | None = None
+        after: dict[str, Any] | None = None
 
-		for point in known_points:
-			point_time = point["time"]
-			if point_time <= target_time:
-				before = point
-			if point_time >= target_time:
-				after = point
-				break
+        for point in known_points:
+            point_time = point["time"]
+            if point_time <= target_time:
+                before = point
+            if point_time >= target_time:
+                after = point
+                break
 
-		return before, after
+        return before, after
 
-	def _interpolate_numeric(self, start_value: float, end_value: float, ratio: float) -> float:
-		return start_value + (end_value - start_value) * ratio
+    def _interpolate_numeric(
+        self, start_value: float, end_value: float, ratio: float
+    ) -> float:
+        return start_value + (end_value - start_value) * ratio
 
-	def _build_current_row(self, current_payload: dict[str, Any]) -> dict[str, Any] | None:
-		dt_ts = current_payload.get("dt")
-		if not dt_ts:
-			return None
+    def _build_current_row(
+        self, current_payload: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        dt_ts = current_payload.get("dt")
+        if not dt_ts:
+            return None
 
-		main = current_payload.get("main", {})
-		wind = current_payload.get("wind", {})
-		weather_list = current_payload.get("weather", [])
-		description = weather_list[0].get("description", "Unknown") if weather_list else "Unknown"
+        main = current_payload.get("main", {})
+        wind = current_payload.get("wind", {})
+        weather_list = current_payload.get("weather", [])
+        description = (
+            weather_list[0].get("description", "Unknown") if weather_list else "Unknown"
+        )
 
-		return {
-			"time": datetime.utcfromtimestamp(dt_ts) + timedelta(seconds=self.timezone_offset_seconds),
-			"temperature_c": round(float(main.get("temp", 0.0)), 1),
-			"humidity": int(main.get("humidity", 0)),
-			"wind_kmh": round(float(wind.get("speed", 0.0)) * 3.6, 1),
-			"description": f"Now - {description.title()}",
-		}
+        return {
+            "time": datetime.utcfromtimestamp(dt_ts)
+            + timedelta(seconds=self.timezone_offset_seconds),
+            "temperature_c": round(float(main.get("temp", 0.0)), 1),
+            "humidity": int(main.get("humidity", 0)),
+            "wind_kmh": round(float(wind.get("speed", 0.0)) * 3.6, 1),
+            "description": f"Now - {description.title()}",
+        }
 
 	def get_location_label(self) -> str:
 		if self.country:
 			return f"{self.locality}, {self.country}"
 		return str(self.locality)
 
-	def _set_fallback(self, message: str) -> None:
-		self.used_fallback = True
-		self.error_message = message
+    def _set_fallback(self, message: str) -> None:
+        self.used_fallback = True
+        self.error_message = message
 
 
 class WeatherChartFactory:
-	"""Builds chart and table objects used by the Weather page."""
+    """Builds chart and table objects used by the Weather page."""
 
-	@staticmethod
-	def build_large_chart(hourly_rows: list[dict[str, Any]]) -> dict[str, Any]:
-		chart_values = []
-		for row in hourly_rows:
-			chart_values.append(
-				{
-					"time_label": row["time"].strftime("%H:%M"),
-					"temperature_c": row["temperature_c"],
-					"humidity": row["humidity"],
-					"wind_kmh": row["wind_kmh"],
-					"description": row["description"],
-				}
-			)
+    @staticmethod
+    def build_large_chart(hourly_rows: list[dict[str, Any]]) -> dict[str, Any]:
+        chart_values = []
+        for row in hourly_rows:
+            chart_values.append(
+                {
+                    "time_label": row["time"].strftime("%H:%M"),
+                    "temperature_c": row["temperature_c"],
+                    "humidity": row["humidity"],
+                    "wind_kmh": row["wind_kmh"],
+                    "description": row["description"],
+                }
+            )
 
-		return {
-			"$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-			"height": 430,
-			"data": {"values": chart_values},
-			"params": [
-				{
-					"name": "hover",
-					"select": {
-						"type": "point",
-						"fields": ["time_label"],
-						"nearest": True,
-						"on": "mousemove",
-						"clear": "mouseout",
-					},
-				}
-			],
-			"encoding": {
-				"x": {"field": "time_label", "type": "ordinal", "title": "Hour", "sort": None}
-			},
-			"layer": [
-				{
-					"mark": {"type": "line", "strokeWidth": 4, "color": "#0284c7"},
-					"encoding": {
-						"y": {
-							"field": "temperature_c",
-							"type": "quantitative",
-							"title": "Temperature (°C)",
-						},
-						"tooltip": [
-							{"field": "time_label", "type": "nominal", "title": "Time"},
-							{"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)"},
-							{"field": "description", "type": "nominal", "title": "Description"},
-							{"field": "humidity", "type": "quantitative", "title": "Humidity (%)"},
-							{"field": "wind_kmh", "type": "quantitative", "title": "Wind (km/h)"},
-						],
-					},
-				},
-				{
-					"transform": [{"filter": {"param": "hover", "empty": False}}],
-					"mark": {
-						"type": "rule",
-						"strokeDash": [6, 4],
-						"color": "#64748b",
-						"size": 2,
-					},
-					"encoding": {
-						"x": {"field": "time_label", "type": "ordinal"}
-					},
-				},
-				{
-					"mark": {"type": "circle", "size": 130, "opacity": 0.95},
-					"encoding": {
-						"y": {"field": "temperature_c", "type": "quantitative"},
-						"color": {
-							"field": "description",
-							"type": "nominal",
-							"title": "Condition",
-							"scale": {
-								"domain": [
-									"Clear",
-									"Few clouds",
-									"Scattered clouds",
-									"Light rain",
-									"Moderate rain",
-									"Heavy rain",
-									"Thunderstorm",
-								],
-								"range": [
-									"#0ea5e9",
-									"#60a5fa",
-									"#93c5fd",
-									"#4ade80",
-									"#22c55e",
-									"#16a34a",
-									"#ef4444",
-								],
-							},
-						},
-						"tooltip": [
-							{"field": "description", "type": "nominal", "title": "Condition"},
-							{"field": "time_label", "type": "nominal", "title": "Time"},
-						],
-						"opacity": {
-							"condition": {"param": "hover", "value": 1},
-							"value": 0.85,
-						},
-					},
-				},
-			],
-			"config": {
-				"axis": {"labelFontSize": 12, "titleFontSize": 13},
-				"legend": {"labelFontSize": 12, "titleFontSize": 13, "orient": "bottom"},
-			},
-		}
+        return {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "height": 430,
+            "data": {"values": chart_values},
+            "params": [
+                {
+                    "name": "hover",
+                    "select": {
+                        "type": "point",
+                        "fields": ["time_label"],
+                        "nearest": True,
+                        "on": "mousemove",
+                        "clear": "mouseout",
+                    },
+                }
+            ],
+            "encoding": {
+                "x": {
+                    "field": "time_label",
+                    "type": "ordinal",
+                    "title": "Hour",
+                    "sort": None,
+                }
+            },
+            "layer": [
+                {
+                    "mark": {"type": "line", "strokeWidth": 4, "color": "#0284c7"},
+                    "encoding": {
+                        "y": {
+                            "field": "temperature_c",
+                            "type": "quantitative",
+                            "title": "Temperature (°C)",
+                        },
+                        "tooltip": [
+                            {"field": "time_label", "type": "nominal", "title": "Time"},
+                            {
+                                "field": "temperature_c",
+                                "type": "quantitative",
+                                "title": "Temperature (°C)",
+                            },
+                            {
+                                "field": "description",
+                                "type": "nominal",
+                                "title": "Description",
+                            },
+                            {
+                                "field": "humidity",
+                                "type": "quantitative",
+                                "title": "Humidity (%)",
+                            },
+                            {
+                                "field": "wind_kmh",
+                                "type": "quantitative",
+                                "title": "Wind (km/h)",
+                            },
+                        ],
+                    },
+                },
+                {
+                    "transform": [{"filter": {"param": "hover", "empty": False}}],
+                    "mark": {
+                        "type": "rule",
+                        "strokeDash": [6, 4],
+                        "color": "#64748b",
+                        "size": 2,
+                    },
+                    "encoding": {"x": {"field": "time_label", "type": "ordinal"}},
+                },
+                {
+                    "mark": {"type": "circle", "size": 130, "opacity": 0.95},
+                    "encoding": {
+                        "y": {"field": "temperature_c", "type": "quantitative"},
+                        "color": {
+                            "field": "description",
+                            "type": "nominal",
+                            "title": "Condition",
+                            "scale": {
+                                "domain": [
+                                    "Clear",
+                                    "Few clouds",
+                                    "Scattered clouds",
+                                    "Light rain",
+                                    "Moderate rain",
+                                    "Heavy rain",
+                                    "Thunderstorm",
+                                ],
+                                "range": [
+                                    "#0ea5e9",
+                                    "#60a5fa",
+                                    "#93c5fd",
+                                    "#4ade80",
+                                    "#22c55e",
+                                    "#16a34a",
+                                    "#ef4444",
+                                ],
+                            },
+                        },
+                        "tooltip": [
+                            {
+                                "field": "description",
+                                "type": "nominal",
+                                "title": "Condition",
+                            },
+                            {"field": "time_label", "type": "nominal", "title": "Time"},
+                        ],
+                        "opacity": {
+                            "condition": {"param": "hover", "value": 1},
+                            "value": 0.85,
+                        },
+                    },
+                },
+            ],
+            "config": {
+                "axis": {"labelFontSize": 12, "titleFontSize": 13},
+                "legend": {
+                    "labelFontSize": 12,
+                    "titleFontSize": 13,
+                    "orient": "bottom",
+                },
+            },
+        }
 
-	@staticmethod
-	def build_table_rows(hourly_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-		display_rows: list[dict[str, Any]] = []
-		for row in hourly_rows:
-			time_emoji = WeatherChartFactory._time_emoji(row["time"].hour)
-			description_emoji = WeatherChartFactory._description_emoji(row["description"])
-			display_rows.append(
-				{
-					"🕒 Time": f"{time_emoji} {row['time'].strftime('%a %H:%M')}",
-					"🌡️ Temp (°C)": row["temperature_c"],
-					"💧 Humidity (%)": row["humidity"],
-					"💨 Wind (km/h)": row["wind_kmh"],
-					"☁️ Description": f"{description_emoji} {row['description']}",
-				}
-			)
-		return display_rows
+    @staticmethod
+    def build_table_rows(hourly_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        display_rows: list[dict[str, Any]] = []
+        for row in hourly_rows:
+            time_emoji = WeatherChartFactory._time_emoji(row["time"].hour)
+            description_emoji = WeatherChartFactory._description_emoji(
+                row["description"]
+            )
+            display_rows.append(
+                {
+                    "🕒 Time": f"{time_emoji} {row['time'].strftime('%a %H:%M')}",
+                    "🌡️ Temp (°C)": row["temperature_c"],
+                    "💧 Humidity (%)": row["humidity"],
+                    "💨 Wind (km/h)": row["wind_kmh"],
+                    "☁️ Description": f"{description_emoji} {row['description']}",
+                }
+            )
+        return display_rows
 
-	@staticmethod
-	def _time_emoji(hour: int) -> str:
-		# Daytime icon between 6AM and 5:59PM; moon icon otherwise.
-		return "☀️" if 6 <= hour < 18 else "🌙"
+    @staticmethod
+    def _time_emoji(hour: int) -> str:
+        # Daytime icon between 6AM and 5:59PM; moon icon otherwise.
+        return "☀️" if 6 <= hour < 18 else "🌙"
 
-	@staticmethod
-	def _description_emoji(description: str) -> str:
-		desc = description.lower()
-		if "thunder" in desc:
-			return "⛈️"
-		if "rain" in desc or "drizzle" in desc:
-			return "🌧️"
-		if "snow" in desc:
-			return "❄️"
-		if "mist" in desc or "fog" in desc or "haze" in desc:
-			return "🌫️"
-		if "overcast" in desc:
-			return "☁️"
-		if "cloud" in desc:
-			return "⛅"
-		if "clear" in desc:
-			return "☀️"
-		return "🌤️"
+    @staticmethod
+    def _description_emoji(description: str) -> str:
+        desc = description.lower()
+        if "thunder" in desc:
+            return "⛈️"
+        if "rain" in desc or "drizzle" in desc:
+            return "🌧️"
+        if "snow" in desc:
+            return "❄️"
+        if "mist" in desc or "fog" in desc or "haze" in desc:
+            return "🌫️"
+        if "overcast" in desc:
+            return "☁️"
+        if "cloud" in desc:
+            return "⛅"
+        if "clear" in desc:
+            return "☀️"
+        return "🌤️"
 
 
 class WeatherPage:
-	"""Coordinates weather data and UI rendering for the Streamlit page."""
+    """Coordinates weather data and UI rendering for the Streamlit page."""
 
-	def __init__(self, weather_repository: Any) -> None:
-		self.weather_repository = weather_repository
+    def __init__(self, weather_repository: Any) -> None:
+        self.weather_repository = weather_repository
 
 	def render(self) -> None:
 		self._sync_location_from_saved_selection()
@@ -421,9 +487,9 @@ class WeatherPage:
 		self._render_large_forecast_chart(all_hourly_rows, location_label, raw_hourly_rows)
 		self._render_hourly_table(all_hourly_rows)
 
-	def _sync_location_from_saved_selection(self) -> None:
-		saved_city = str(st.session_state.get("saved_city", "")).strip()
-		saved_country = str(st.session_state.get("saved_country", "")).strip()
+    def _sync_location_from_saved_selection(self) -> None:
+        saved_city = str(st.session_state.get("saved_city", "")).strip()
+        saved_country = str(st.session_state.get("saved_country", "")).strip()
 
 		# Normalize placeholder values coming from UI summary fields.
 		if saved_city.lower() in {"n/a", "na", "none", "null"}:
@@ -443,56 +509,62 @@ class WeatherPage:
 			target_locality = "Melbourne"
 			target_country = "AU"
 
-		# Compare against what was actually last fetched, not the freshly-constructed
-		# repository defaults, so day-navigation reruns never bust the cache.
-		cached_meta = st.session_state.get("weather_cached_meta", {})
-		prev_locality = str(cached_meta.get("locality", "")).strip()
-		prev_country = str(cached_meta.get("country", "")).strip().upper()
+        # Compare against what was actually last fetched, not the freshly-constructed
+        # repository defaults, so day-navigation reruns never bust the cache.
+        cached_meta = st.session_state.get("weather_cached_meta", {})
+        prev_locality = str(cached_meta.get("locality", "")).strip()
+        prev_country = str(cached_meta.get("country", "")).strip().upper()
 
-		if prev_locality and target_locality == prev_locality and target_country == prev_country:
-			# Location unchanged — keep the existing cache and sync repo attrs.
-			if hasattr(self.weather_repository, "locality"):
-				self.weather_repository.locality = target_locality
-			if hasattr(self.weather_repository, "country"):
-				self.weather_repository.country = target_country
-			return
+        if (
+            prev_locality
+            and target_locality == prev_locality
+            and target_country == prev_country
+        ):
+            # Location unchanged — keep the existing cache and sync repo attrs.
+            if hasattr(self.weather_repository, "locality"):
+                self.weather_repository.locality = target_locality
+            if hasattr(self.weather_repository, "country"):
+                self.weather_repository.country = target_country
+            return
 
-		if hasattr(self.weather_repository, "locality"):
-			self.weather_repository.locality = target_locality
-		if hasattr(self.weather_repository, "country"):
-			self.weather_repository.country = target_country
+        if hasattr(self.weather_repository, "locality"):
+            self.weather_repository.locality = target_locality
+        if hasattr(self.weather_repository, "country"):
+            self.weather_repository.country = target_country
 
 		# Location changed — invalidate cache so new data is fetched.
 		st.session_state.pop("weather_cached_rows", None)
 		st.session_state.pop("weather_cached_meta", None)
 		st.session_state.pop("weather_cached_raw_rows", None)
 
-	def _to_country_code(self, country_name_or_code: str) -> str:
-		country = country_name_or_code.strip()
-		if not country:
-			return "AU"
+    def _to_country_code(self, country_name_or_code: str) -> str:
+        country = country_name_or_code.strip()
+        if not country:
+            return "AU"
 
-		if len(country) == 2 and country.isalpha():
-			return country.upper()
+        if len(country) == 2 and country.isalpha():
+            return country.upper()
 
-		if pycountry is not None:
-			try:
-				return str(pycountry.countries.lookup(country).alpha_2).upper()
-			except LookupError:
-				pass
+        if pycountry is not None:
+            try:
+                return str(pycountry.countries.lookup(country).alpha_2).upper()
+            except LookupError:
+                pass
 
-		# Fallback: let OpenWeather geocoding attempt to resolve the provided country text.
-		return country
+        # Fallback: let OpenWeather geocoding attempt to resolve the provided country text.
+        return country
 
-	def _load_cached_or_fetch_rows(self, hours: int) -> list[dict[str, Any]]:
-		cache_key = "weather_cached_rows"
-		meta_key = "weather_cached_meta"
+    def _load_cached_or_fetch_rows(self, hours: int) -> list[dict[str, Any]]:
+        cache_key = "weather_cached_rows"
+        meta_key = "weather_cached_meta"
 
-		if cache_key in st.session_state:
-			cached_offset = st.session_state.get(meta_key, {}).get("timezone_offset_seconds", 0)
-			if hasattr(self.weather_repository, "timezone_offset_seconds"):
-				self.weather_repository.timezone_offset_seconds = int(cached_offset)
-			return st.session_state[cache_key]
+        if cache_key in st.session_state:
+            cached_offset = st.session_state.get(meta_key, {}).get(
+                "timezone_offset_seconds", 0
+            )
+            if hasattr(self.weather_repository, "timezone_offset_seconds"):
+                self.weather_repository.timezone_offset_seconds = int(cached_offset)
+            return st.session_state[cache_key]
 
 		rows = self.weather_repository.get_hourly_forecast(hours=hours)
 		raw_rows = list(getattr(self.weather_repository, "raw_forecast_rows", rows))
@@ -508,13 +580,15 @@ class WeatherPage:
 		}
 		return rows
 
-	def _location_now(self) -> datetime:
-		offset = timedelta(seconds=int(getattr(self.weather_repository, "timezone_offset_seconds", 0)))
-		return datetime.utcnow() + offset
+    def _location_now(self) -> datetime:
+        offset = timedelta(
+            seconds=int(getattr(self.weather_repository, "timezone_offset_seconds", 0))
+        )
+        return datetime.utcnow() + offset
 
-	def _render_styles(self) -> None:
-		st.html(
-			"""
+    def _render_styles(self) -> None:
+        st.html(
+            """
 			<style>
 			/* Slide-fade-DOWN keyframe */
 			@keyframes slideFadeDown {
@@ -635,18 +709,18 @@ class WeatherPage:
 			}
 			</style>
 			"""
-		)
+        )
 
-	def _render_header(self, location_label: str) -> None:
-		st.markdown(
-			f"""
+    def _render_header(self, location_label: str) -> None:
+        st.markdown(
+            f"""
 			<div class="weather-shell">
 				<div class="weather-title">🌤️ Weather Overview</div>
-				<div class="weather-subtitle">📍 {location_label} | 🕒 Updated {datetime.now().strftime('%d %b %Y, %H:%M')}</div>
+				<div class="weather-subtitle">📍 {location_label} | 🕒 Updated {datetime.now().strftime("%d %b %Y, %H:%M")}</div>
 			</div>
 			""",
-			unsafe_allow_html=True,
-		)
+            unsafe_allow_html=True,
+        )
 
 	def _render_data_source_notice(self) -> None:
 		meta = st.session_state.get("weather_cached_meta", {})
@@ -672,20 +746,20 @@ class WeatherPage:
 		else:
 			st.success("Live OpenWeather data loaded.")
 
-		sync_text = "Last synced: Not synced yet"
-		if last_synced_at:
-			sync_text = f"Last synced: {last_synced_at.strftime('%d %b %Y %H:%M:%S')}"
+        sync_text = "Last synced: Not synced yet"
+        if last_synced_at:
+            sync_text = f"Last synced: {last_synced_at.strftime('%d %b %Y %H:%M:%S')}"
 
-		sync_col, refresh_col = st.columns([8, 1], vertical_alignment="center")
-		with sync_col:
-			st.caption(sync_text)
-		with refresh_col:
-			refresh_clicked = st.button(
-				"🔄",
-				key="refresh_weather_button",
-				use_container_width=False,
-				help="Refresh live weather",
-			)
+        sync_col, refresh_col = st.columns([8, 1], vertical_alignment="center")
+        with sync_col:
+            st.caption(sync_text)
+        with refresh_col:
+            refresh_clicked = st.button(
+                "🔄",
+                key="refresh_weather_button",
+                use_container_width=False,
+                help="Refresh live weather",
+            )
 
 		if refresh_clicked:
 			st.session_state.pop("weather_cached_rows", None)
@@ -693,15 +767,17 @@ class WeatherPage:
 			st.session_state.pop("weather_cached_raw_rows", None)
 			st.rerun()
 
-	def _render_metrics(self, hourly_rows: list[dict[str, Any]]) -> None:
-		current_temp = float(hourly_rows[0]["temperature_c"])
-		avg_humidity = int(sum(row["humidity"] for row in hourly_rows) / len(hourly_rows))
-		max_wind = float(max(row["wind_kmh"] for row in hourly_rows))
+    def _render_metrics(self, hourly_rows: list[dict[str, Any]]) -> None:
+        current_temp = float(hourly_rows[0]["temperature_c"])
+        avg_humidity = int(
+            sum(row["humidity"] for row in hourly_rows) / len(hourly_rows)
+        )
+        max_wind = float(max(row["wind_kmh"] for row in hourly_rows))
 
-		m1, m2, m3 = st.columns(3)
-		m1.metric("🌡️ Current Temp", f"{current_temp:.1f} °C")
-		m2.metric("💧 Avg Humidity", f"{avg_humidity}%")
-		m3.metric("💨 Peak Wind", f"{max_wind:.1f} km/h")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("🌡️ Current Temp", f"{current_temp:.1f} °C")
+        m2.metric("💧 Avg Humidity", f"{avg_humidity}%")
+        m3.metric("💨 Peak Wind", f"{max_wind:.1f} km/h")
 
 	def _render_large_forecast_chart(
 		self,
@@ -717,8 +793,8 @@ class WeatherPage:
 				📍 {location_label}
 			</div>
 			""",
-			unsafe_allow_html=True,
-		)
+            unsafe_allow_html=True,
+        )
 
 		today = self._location_now().date()
 		selected_offset = int(st.session_state.get("weather_chart_day_offset", 0))
@@ -756,8 +832,8 @@ class WeatherPage:
 					st.session_state.weather_chart_day_offset = min(1, current + 1)
 					st.rerun()
 
-			else:
-				st.markdown("&nbsp;", unsafe_allow_html=True)
+            else:
+                st.markdown("&nbsp;", unsafe_allow_html=True)
 
 		selected_offset = int(st.session_state.get("weather_chart_day_offset", 0))
 		selected_date = today + timedelta(days=selected_offset)
@@ -878,8 +954,8 @@ class WeatherPage:
 			key=f"forecast_chart_{selected_date.isoformat()}_{selected_offset}",
 		)
 
-	def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
-		st.markdown("### 🕒 Hourly Details")
+    def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
+        st.markdown("### 🕒 Hourly Details")
 
 		today = self._location_now().date()
 		tomorrow = today + timedelta(days=1)
@@ -889,12 +965,12 @@ class WeatherPage:
 
 		tab_next, tab_tomorrow = st.tabs(["Next 24 Hours", "Tomorrow"])
 
-		with tab_next:
-			if today_rows:
-				display_rows = WeatherChartFactory.build_table_rows(today_rows)
-				st.dataframe(display_rows, use_container_width=True)
-			else:
-				st.info("No hourly forecast available for today yet.")
+        with tab_next:
+            if today_rows:
+                display_rows = WeatherChartFactory.build_table_rows(today_rows)
+                st.dataframe(display_rows, use_container_width=True)
+            else:
+                st.info("No hourly forecast available for today yet.")
 
 		with tab_tomorrow:
 			if tomorrow_rows:
@@ -904,9 +980,9 @@ class WeatherPage:
 				st.info("No hourly forecast available for tomorrow yet.")
 fallback_repository = MockWeatherRepository()
 weather_repository = OpenWeatherRepository(
-	fallback_repository=fallback_repository,
-	locality="Melbourne",
-	country="AU",
+    fallback_repository=fallback_repository,
+    locality="Melbourne",
+    country="AU",
 )
 
 weather_page = WeatherPage(weather_repository=weather_repository)

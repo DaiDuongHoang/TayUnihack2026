@@ -1,4 +1,6 @@
 import streamlit as st
+from Authentication import is_authenticated, login_screen
+from data_backend import add_clothing_item
 
 
 CLOTH_TYPE_OPTIONS = [
@@ -112,6 +114,8 @@ def add_clothe_item():
 
     if upload_entry_ready or manual_entry_ready:
         if st.button("Submit", type="primary", use_container_width=True):
+            local_user = st.session_state.get("local_user")
+
             if has_uploaded_files:
                 category = None
                 for index, file in enumerate(uploaded_files, start=1):
@@ -119,11 +123,19 @@ def add_clothe_item():
                     if len(uploaded_files) > 1:
                         uploaded_item_name = f"{clean_item_name} {index}"
 
+                    image_data = file.getvalue()
+
                     category = _add_item_to_catalog(
                         name=uploaded_item_name,
                         cloth_type=None,
-                        image=file.getvalue(),
+                        image=image_data,
                     )
+                    if local_user:
+                        add_clothing_item(
+                            username=local_user,
+                            item_name=uploaded_item_name,
+                            image_data=image_data,
+                        )
                 st.session_state.wardrobe_feedback = (
                     f"Added {len(uploaded_files)} item(s) to {category}."
                 )
@@ -133,21 +145,30 @@ def add_clothe_item():
                     cloth_type=selected_cloth_type,
                     color=manual_color,
                 )
+                if local_user:
+                    add_clothing_item(
+                        username=local_user,
+                        item_name=clean_item_name,
+                        cloth_type=selected_cloth_type,
+                        color=manual_color,
+                        wardrobe_category=category,
+                    )
                 st.session_state.wardrobe_feedback = f"Added {_plain_cloth_type_name(selected_cloth_type)} to {category}."
 
             st.rerun()
 
 
 if __name__ == "__main__":
-
-    def login_screen():
-        st.header("This app is private.")
-        st.subheader("Please log in.")
-        st.button("Log in with Google", on_click=st.login)
-
-    google_logged_in = bool(getattr(st.user, "is_logged_in", False))
-
-    if not google_logged_in:
-        login_screen()
+    if not is_authenticated():
+        login_screen(
+            title="This app is private.",
+            description="Log in with Google or create a secure local account to continue.",
+        )
     else:
-        st.user
+        local_user_name = st.session_state.get("local_user_name")
+        google_name = getattr(st.user, "name", "")
+        display_name = local_user_name or google_name or "there"
+        st.header(f"Welcome, {display_name}!")
+        st.caption(
+            "Your account is ready. Use the sidebar to manage wardrobe, weather, and location."
+        )
