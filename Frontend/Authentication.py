@@ -90,8 +90,19 @@ def _set_local_session(profile: dict) -> None:
 
 
 def _inject_auth_styles() -> None:
-    icon_path = Path(__file__).resolve().parent.parent / "logo" / "icon.png"
-    if not icon_path.exists():
+    project_root = Path(__file__).resolve().parent.parent
+    icon_path = None
+    for rel_path in (
+        "logo_and_icons/icon.png",
+        "logo_and_icons/Logosmall2.png",
+        "logo/icon.png",
+    ):
+        candidate = project_root / rel_path
+        if candidate.exists():
+            icon_path = candidate
+            break
+
+    if icon_path is None:
         return
 
     icon_base64 = base64.b64encode(icon_path.read_bytes()).decode("utf-8")
