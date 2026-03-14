@@ -248,5 +248,6 @@ runs/
 yolov8m-cls.pt
 yolov8n-cls.pt
 
+
 # Ignore testing operations
 *testing*
