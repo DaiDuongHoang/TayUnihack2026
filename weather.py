@@ -3,6 +3,11 @@ from typing import Any
 
 import streamlit as st
 
+try:
+	import pycountry
+except Exception:
+	pycountry = None
+
 from openweatherapi import fetch_weather_bundle
 
 
@@ -385,6 +390,7 @@ class WeatherPage:
 		self.weather_repository = weather_repository
 
 	def render(self) -> None:
+		self._sync_location_from_saved_selection()
 		all_hourly_rows = self._load_cached_or_fetch_rows(hours=72)
 		next_24_rows = all_hourly_rows[:24]
 		if "weather_chart_day_offset" not in st.session_state:
@@ -400,6 +406,45 @@ class WeatherPage:
 		self._render_metrics(next_24_rows)
 		self._render_large_forecast_chart(all_hourly_rows, location_label)
 		self._render_hourly_table(all_hourly_rows)
+
+	def _sync_location_from_saved_selection(self) -> None:
+		saved_city = str(st.session_state.get("saved_city", "")).strip()
+		saved_country = str(st.session_state.get("saved_country", "")).strip()
+
+		target_locality = saved_city or "Melbourne"
+		target_country = self._to_country_code(saved_country) if saved_country else "AU"
+
+		current_locality = str(getattr(self.weather_repository, "locality", "")).strip()
+		current_country = str(getattr(self.weather_repository, "country", "")).strip().upper()
+
+		if target_locality == current_locality and target_country == current_country:
+			return
+
+		if hasattr(self.weather_repository, "locality"):
+			self.weather_repository.locality = target_locality
+		if hasattr(self.weather_repository, "country"):
+			self.weather_repository.country = target_country
+
+		# Ensure weather fetch uses the newly selected location.
+		st.session_state.pop("weather_cached_rows", None)
+		st.session_state.pop("weather_cached_meta", None)
+
+	def _to_country_code(self, country_name_or_code: str) -> str:
+		country = country_name_or_code.strip()
+		if not country:
+			return "AU"
+
+		if len(country) == 2 and country.isalpha():
+			return country.upper()
+
+		if pycountry is not None:
+			try:
+				return str(pycountry.countries.lookup(country).alpha_2).upper()
+			except LookupError:
+				pass
+
+		# Fallback: let OpenWeather geocoding attempt to resolve the provided country text.
+		return country
 
 	def _load_cached_or_fetch_rows(self, hours: int) -> list[dict[str, Any]]:
 		cache_key = "weather_cached_rows"
@@ -555,7 +600,7 @@ class WeatherPage:
 				f"Details: {error_message or 'Unknown error'}"
 			)
 		else:
-			st.success("Live OpenWeather data loaded for Melbourne.")
+			st.success("Live OpenWeather data loaded.")
 
 		sync_text = "Last synced: Not synced yet"
 		if last_synced_at:
