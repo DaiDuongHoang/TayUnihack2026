@@ -203,13 +203,13 @@ filtered_cities = get_cities(st.session_state.country)
 with col2:
     if filtered_cities:
         selected_city = st.selectbox(
-            "City",
+            "City/Suburb",
             filtered_cities,
             index=filtered_cities.index(st.session_state.city)
         )
     else:
         selected_city = ""
-        st.selectbox("City", ["No data"], disabled=True)
+        st.selectbox("City/Suburb", ["No data"], disabled=True)
 
 if selected_city != st.session_state.city:
     st.session_state.city = selected_city
@@ -228,7 +228,7 @@ if st.button("Save Changes", use_container_width=True):
 
 st.divider()
 
-st.subheader("Summary")
+st.subheader("📍 Chosen Location")
 
 summary_container = st.container(border=True)
 
@@ -244,6 +244,6 @@ with summary_container:
 
     with col2:
         st.metric(
-            label="City",
+            label="City/Suburb",
             value=st.session_state.saved_city or "N/A"
         )
