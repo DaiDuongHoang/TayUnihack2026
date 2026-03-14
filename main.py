@@ -1,17 +1,13 @@
 import streamlit as st
 
-st.set_page_config(page_title="UniHack 2026 - Outfit Planner", layout="wide")
+pages = {
+    "Home": [
+        st.Page("wardrobe.py", title="Wardrobe", icon="👗"),
+        st.Page("weather.py", title="Weather", icon="🌦️"),
+        st.Page("location.py", title="Location", icon="🎈"),
+    ]
+}
 
-st.title("👗 AI Outfit Planner - Team TayUnihack")
-
-# Add sidebar navigation
-st.sidebar.title("AI Outfit Planner")
-locationPage = st.Page("location.py", title="Location", icon="🎈")
-mainDashboardPage = st.Page("main_dashboard.py", title="Dashboard", icon="🎯")
-statsPage = st.Page("stats.py", title="Statistics", icon="📊")
-wardrobePage = st.Page("wardrobe.py", title="Wardrobe", icon="👕")
-weatherPage = st.Page("weather.py", title="Weather", icon="🌦️")
-
-pg = st.navigation([locationPage, mainDashboardPage, statsPage, wardrobePage, weatherPage])
-pg.run()
-
+pg = st.navigation(pages)
+if __name__ == "__main__":
+    pg.run()
