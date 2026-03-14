@@ -436,7 +436,7 @@ class WeatherPage:
 			/* Apply to all buttons */
 			div[data-testid="stButton"] button {
 				animation: slideFadeDown 0.4s ease forwards;
-				transition: transform 0.2s ease, box-shadow 0.2s ease;
+				transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1), filter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 			}
 
 			/* Apply to bordered column/grid boxes */
@@ -464,8 +464,49 @@ class WeatherPage:
 
 			/* Keep hover effect on buttons */
 			div[data-testid="stButton"] button:hover {
-				transform: scale(1.03);
-				box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+				transform: translateY(-2px) scale(1.02);
+				box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+			}
+
+			/* Dedicated animation for weather refresh icon button */
+			@keyframes refreshButtonFloat {
+				0%,
+				100% {
+					transform: translateY(0);
+				}
+				50% {
+					transform: translateY(-5px);
+				}
+			}
+
+			@keyframes refreshButtonWiggle {
+				0% {
+					transform: translateX(-2px) scale(1.05) rotate(0deg);
+				}
+				25% {
+					transform: translateX(-4px) scale(1.06) rotate(-1deg);
+				}
+				50% {
+					transform: translateX(-2px) scale(1.07) rotate(1deg);
+				}
+				75% {
+					transform: translateX(-4px) scale(1.06) rotate(-1deg);
+				}
+				100% {
+					transform: translateX(-2px) scale(1.05) rotate(0deg);
+				}
+			}
+
+			.st-key-refresh_weather_button button {
+				animation: refreshButtonFloat 2.2s ease-in-out infinite;
+				border: 1px solid rgba(59, 130, 246, 0.35);
+				transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+			}
+
+			.st-key-refresh_weather_button button:hover {
+				animation: refreshButtonWiggle 0.9s ease-in-out infinite;
+				box-shadow: 0 10px 22px rgba(59, 130, 246, 0.45);
+				filter: brightness(1.08) saturate(1.12);
 			}
 
 			/* Weather page visual shell styling */
@@ -516,10 +557,22 @@ class WeatherPage:
 		else:
 			st.success("Live OpenWeather data loaded for Melbourne.")
 
+		sync_text = "Last synced: Not synced yet"
 		if last_synced_at:
-			st.caption(f"Last synced: {last_synced_at.strftime('%d %b %Y %H:%M:%S')}")
+			sync_text = f"Last synced: {last_synced_at.strftime('%d %b %Y %H:%M:%S')}"
 
-		if st.button("Refresh live weather", use_container_width=False):
+		sync_col, refresh_col = st.columns([8, 1], vertical_alignment="center")
+		with sync_col:
+			st.caption(sync_text)
+		with refresh_col:
+			refresh_clicked = st.button(
+				"🔄",
+				key="refresh_weather_button",
+				use_container_width=False,
+				help="Refresh live weather",
+			)
+
+		if refresh_clicked:
 			st.session_state.pop("weather_cached_rows", None)
 			st.session_state.pop("weather_cached_meta", None)
 			st.rerun()
@@ -584,7 +637,7 @@ class WeatherPage:
 		st.line_chart(chart_data, x="Time", y="Temperature (°C)", use_container_width=True)
 
 	def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
-		st.markdown("### 🗂️ Hourly Details")
+		st.markdown("### 🕒 Hourly Details")
 
 		today = datetime.now().date()
 		tomorrow = today + timedelta(days=1)
@@ -601,21 +654,21 @@ class WeatherPage:
 		with tab_next:
 			if today_rows:
 				display_rows = WeatherChartFactory.build_table_rows(today_rows)
-				st.dataframe(display_rows, use_container_width=True, hide_index=True)
+				st.dataframe(display_rows, use_container_width=True)
 			else:
 				st.info("No hourly forecast available for today yet.")
 
 		with tab_tomorrow:
 			if tomorrow_rows:
 				display_rows = WeatherChartFactory.build_table_rows(tomorrow_rows)
-				st.dataframe(display_rows, use_container_width=True, hide_index=True)
+				st.dataframe(display_rows, use_container_width=True)
 			else:
 				st.info("No hourly forecast available for tomorrow yet.")
 
 		with tab_day_after:
 			if day_after_rows:
 				display_rows = WeatherChartFactory.build_table_rows(day_after_rows)
-				st.dataframe(display_rows, use_container_width=True, hide_index=True)
+				st.dataframe(display_rows, use_container_width=True)
 			else:
 				st.info("No hourly forecast available for the day after yet.")
 fallback_repository = MockWeatherRepository()
