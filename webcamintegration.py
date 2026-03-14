@@ -3,8 +3,7 @@ import streamlit as st
 
 @st.dialog("Webcam Integration")
 def webcam_integration():
-    st.info("This dialog demonstrates webcam integration using OpenCV.")
-    run_webcam = st.checkbox("Activate Webcam")
+    run_webcam = st.checkbox("Allow Webcam")
 
     if run_webcam:
         cap = cv2.VideoCapture(0)
@@ -24,3 +23,6 @@ def webcam_integration():
             stframe.image(frame_rgb)
 
         cap.release()
+
+if __name__ == "__main__":
+    webcam_integration()
