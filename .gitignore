@@ -254,3 +254,5 @@ runs/
 
 # Ignore YOLOv8 models
 *.pt
+# Thông tin bảo mật Streamlit
+secrets.toml
