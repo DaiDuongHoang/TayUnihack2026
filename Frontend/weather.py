@@ -229,7 +229,9 @@ class OpenWeatherRepository:
 		}
 
 	def get_location_label(self) -> str:
-		return f"{self.locality}, {self.country}"
+		if self.country:
+			return f"{self.locality}, {self.country}"
+		return str(self.locality)
 
 	def _set_fallback(self, message: str) -> None:
 		self.used_fallback = True
@@ -423,8 +425,23 @@ class WeatherPage:
 		saved_city = str(st.session_state.get("saved_city", "")).strip()
 		saved_country = str(st.session_state.get("saved_country", "")).strip()
 
-		target_locality = saved_city or "Melbourne"
-		target_country = self._to_country_code(saved_country) if saved_country else "AU"
+		# Normalize placeholder values coming from UI summary fields.
+		if saved_city.lower() in {"n/a", "na", "none", "null"}:
+			saved_city = ""
+		if saved_country.lower() in {"n/a", "na", "none", "null"}:
+			saved_country = ""
+
+		if saved_city:
+			target_locality = saved_city
+			target_country = self._to_country_code(saved_country) if saved_country else ""
+		elif saved_country:
+			# If city is missing, query by country/locality text instead of
+			# mixing default Melbourne with a new country code.
+			target_locality = saved_country
+			target_country = ""
+		else:
+			target_locality = "Melbourne"
+			target_country = "AU"
 
 		# Compare against what was actually last fetched, not the freshly-constructed
 		# repository defaults, so day-navigation reruns never bust the cache.
@@ -636,12 +653,22 @@ class WeatherPage:
 		used_fallback = bool(meta.get("used_fallback", False))
 		error_message = str(meta.get("error_message", "Unknown error"))
 		last_synced_at = meta.get("last_synced_at")
+		error_text = error_message.lower()
 
 		if used_fallback:
-			st.warning(
-				"OpenWeather unavailable, showing mock data. "
-				f"Details: {error_message or 'Unknown error'}"
-			)
+			if "could not find location" in error_text:
+				st.warning(
+					"We couldn't find that location. Please check the city/country and try again."
+				)
+			elif "request failed" in error_text or "timeout" in error_text:
+				st.warning(
+					"Weather service is temporarily unavailable. Showing backup weather data for now."
+				)
+			else:
+				st.warning("Live weather is unavailable right now. Showing backup weather data.")
+
+			if error_message:
+				st.caption(f"Technical details: {error_message}")
 		else:
 			st.success("Live OpenWeather data loaded.")
 
