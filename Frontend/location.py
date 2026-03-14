@@ -1,6 +1,15 @@
 import streamlit as st
 import pycountry
 import geonamescache
+from Authentication import is_authenticated, login_screen
+from data_backend import get_user_location, save_user_location
+
+if not is_authenticated():
+    login_screen(
+        title="Sign in to manage location",
+        description="Use Google or your local email/password account to continue.",
+    )
+    st.stop()
 
 # CSS animations
 st.html("""
@@ -181,6 +190,30 @@ def get_cities(country):
 # Session state
 # ==========================================
 countries = get_countries()
+local_user = st.session_state.get("local_user")
+
+if "location_owner" not in st.session_state:
+    st.session_state.location_owner = None
+
+if st.session_state.location_owner != local_user:
+    stored_location = get_user_location(local_user) if local_user else None
+    default_country = countries[0]
+    default_city = ""
+
+    if stored_location and stored_location["country"] in countries:
+        default_country = stored_location["country"]
+
+    default_cities = get_cities(default_country)
+    if stored_location and stored_location["city"] in default_cities:
+        default_city = stored_location["city"]
+    elif default_cities:
+        default_city = default_cities[0]
+
+    st.session_state.country = default_country
+    st.session_state.city = default_city
+    st.session_state.saved_country = default_country
+    st.session_state.saved_city = default_city
+    st.session_state.location_owner = local_user
 
 if "country" not in st.session_state:
     st.session_state.country = countries[0]
@@ -235,6 +268,12 @@ st.markdown("")
 if st.button("**Save Changes**", use_container_width=True, type="primary"):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
+    if local_user:
+        save_user_location(
+            local_user,
+            st.session_state.saved_country,
+            st.session_state.saved_city,
+        )
     st.markdown(
         "<div class='saved-pill'>✅ Location saved!</div>",
         unsafe_allow_html=True,

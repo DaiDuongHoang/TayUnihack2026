@@ -10,43 +10,89 @@ def load_backend_functions():
     try:
         module = importlib.import_module(BACKEND_MODULE)
     except ModuleNotFoundError:
-        return None, None
+        return None, None, None, None
 
     register_fn = getattr(module, "register_user", None)
     verify_fn = getattr(module, "verify_user", None)
-    return register_fn, verify_fn
+    authenticate_fn = getattr(module, "authenticate_user", None)
+    google_sync_fn = getattr(module, "sync_google_user", None)
+    return register_fn, verify_fn, authenticate_fn, google_sync_fn
 
 
-backend_register_user, backend_verify_user = load_backend_functions()
+(
+    backend_register_user,
+    backend_verify_user,
+    backend_authenticate_user,
+    backend_sync_google_user,
+) = load_backend_functions()
 
 
-def register_user(username: str, password: str) -> tuple[bool, str]:
+def register_user(first_name: str, email: str, password: str) -> tuple[bool, str]:
     if backend_register_user is None:
         return (
             False,
             "Backend register function is not connected. "
-            "Expose auth_backend.register_user(username, password) and re-run.",
+            "Expose auth_backend.register_user(first_name, email, password) and re-run.",
         )
-    return backend_register_user(username.strip(), password)
+    return backend_register_user(first_name.strip(), email.strip(), password)
 
 
-def authenticate_local_user(username: str, password: str) -> tuple[bool, str]:
+def authenticate_local_user(email: str, password: str) -> tuple[bool, str, dict | None]:
+    if backend_authenticate_user is not None:
+        return backend_authenticate_user(email.strip(), password)
+
     if backend_verify_user is None:
         return (
             False,
             "Backend verify function is not connected. "
-            "Expose auth_backend.verify_user(username, password) and re-run.",
+            "Expose auth_backend.verify_user(email, password) and re-run.",
+            None,
         )
 
-    is_valid = backend_verify_user(username.strip(), password)
+    is_valid = backend_verify_user(email.strip(), password)
     if is_valid:
-        return True, "Login successful."
-    return False, "Invalid username or password."
+        return (
+            True,
+            "Login successful.",
+            {"email": email.strip().lower(), "first_name": "User"},
+        )
+    return False, "Invalid email or password.", None
 
 
-def login_screen() -> None:
-    st.header("This app is private")
-    st.write("Sign in with Google or use a local account.")
+def is_google_logged_in() -> bool:
+    return bool(getattr(st.user, "is_logged_in", False))
+
+
+def is_authenticated() -> bool:
+    return is_google_logged_in() or bool(st.session_state.get("local_user"))
+
+
+def _sync_google_profile() -> dict | None:
+    if not is_google_logged_in():
+        return None
+
+    email = getattr(st.user, "email", "") or ""
+    full_name = getattr(st.user, "name", "") or "Google user"
+    first_name = full_name.split(" ", 1)[0]
+    google_subject = getattr(st.user, "sub", None)
+
+    if backend_sync_google_user is None or not email:
+        return {"email": email, "first_name": first_name}
+
+    return backend_sync_google_user(email, first_name, google_subject)
+
+
+def _set_local_session(profile: dict) -> None:
+    st.session_state.local_user = profile.get("email")
+    st.session_state.local_user_name = profile.get("first_name") or "User"
+
+
+def login_screen(
+    title: str = "This app is private",
+    description: str = "Sign in with Google or use a local account.",
+) -> None:
+    st.header(title)
+    st.write(description)
 
     login_tab, register_tab = st.tabs(["Log in", "Register"])
 
@@ -60,14 +106,16 @@ def login_screen() -> None:
         st.divider()
         st.subheader("Local login")
         with st.form("local_login_form"):
-            username = st.text_input("Username", placeholder="Enter your username")
+            email = st.text_input("Email", placeholder="Enter your email address")
             password = st.text_input("Password", type="password")
             submitted = st.form_submit_button("Log in", use_container_width=True)
 
         if submitted:
-            is_valid, message = authenticate_local_user(username, password)
+            is_valid, message, profile = authenticate_local_user(email, password)
             if is_valid:
-                st.session_state.local_user = username.strip()
+                _set_local_session(
+                    profile or {"email": email.strip().lower(), "first_name": "User"}
+                )
                 st.success(message)
                 st.rerun()
             else:
@@ -76,37 +124,59 @@ def login_screen() -> None:
     with register_tab:
         st.subheader("Create local account")
         with st.form("local_register_form"):
-            username = st.text_input(
-                "New username", placeholder="Choose a unique username"
+            first_name = st.text_input(
+                "First name", placeholder="Enter your first name"
             )
-            password = st.text_input("New password", type="password")
+            email = st.text_input("Email", placeholder="Enter your email address")
+            password = st.text_input("Password", type="password")
             confirm_password = st.text_input("Confirm password", type="password")
             submitted = st.form_submit_button(
                 "Create account", use_container_width=True
             )
 
+        st.caption("Local passwords are stored using salted PBKDF2-SHA256 hashing.")
+
         if submitted:
             if password != confirm_password:
                 st.error("Passwords do not match.")
             else:
-                success, message = register_user(username, password)
+                success, message = register_user(first_name, email, password)
                 if success:
+                    _set_local_session(
+                        {
+                            "email": email.strip().lower(),
+                            "first_name": first_name.strip() or "User",
+                        }
+                    )
                     st.success(message)
+                    st.rerun()
                 else:
                     st.error(message)
 
 
 def authenticated_view() -> None:
-    google_logged_in = bool(st.user.is_logged_in)
+    google_logged_in = is_google_logged_in()
     local_user = st.session_state.get("local_user")
+    local_user_name = st.session_state.get("local_user_name")
 
     if google_logged_in:
-        display_name = st.user.name or "Google user"
+        google_profile = _sync_google_profile()
+        display_name = (
+            getattr(st.user, "name", "")
+            or (google_profile or {}).get("first_name")
+            or "Google user"
+        )
         st.header(f"Welcome, {display_name}!")
-        st.caption("Authenticated with Google")
+        google_email = getattr(st.user, "email", "") or (google_profile or {}).get(
+            "email", ""
+        )
+        if google_email:
+            st.caption(f"Authenticated with Google: {google_email}")
+        else:
+            st.caption("Authenticated with Google")
     elif local_user:
-        st.header(f"Welcome, {local_user}!")
-        st.caption("Authenticated with local username/password")
+        st.header(f"Welcome, {local_user_name or local_user}!")
+        st.caption(f"Authenticated with local email/password: {local_user}")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -116,6 +186,7 @@ def authenticated_view() -> None:
         if local_user:
             if st.button("Log out (Local)", use_container_width=True):
                 st.session_state.local_user = None
+                st.session_state.local_user_name = None
                 st.rerun()
 
 
@@ -124,8 +195,10 @@ def main() -> None:
 
     if "local_user" not in st.session_state:
         st.session_state.local_user = None
+    if "local_user_name" not in st.session_state:
+        st.session_state.local_user_name = None
 
-    if st.user.is_logged_in or st.session_state.local_user:
+    if is_authenticated():
         authenticated_view()
     else:
         login_screen()

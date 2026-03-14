@@ -1,5 +1,14 @@
 import streamlit as st
+from Authentication import is_authenticated, login_screen
+from data_backend import get_user_catalog
 from mainPage import add_clothe_item
+
+if not is_authenticated():
+    login_screen(
+        title="Sign in to access your wardrobe",
+        description="Use Google or your local email/password account to continue.",
+    )
+    st.stop()
 
 # CSS animations
 st.html("""
@@ -116,9 +125,8 @@ if "selected_category" not in st.session_state:
     st.session_state.selected_category = None
 
 
-# !!! Clothes catalogue !!!
-if "catalog" not in st.session_state:
-    st.session_state.catalog = {
+def _default_catalog():
+    return {
         "Top 👚": [
             ("White T-Shirt", "https://static.streamlit.io/examples/cat.jpg"),
             ("Blue Polo", "https://static.streamlit.io/examples/dog.jpg"),
@@ -140,6 +148,19 @@ if "catalog" not in st.session_state:
             ("Baseball Cap", "https://static.streamlit.io/examples/owl.jpg"),
         ],
     }
+
+
+# !!! Clothes catalogue !!!
+local_user = st.session_state.get("local_user")
+if "catalog_owner" not in st.session_state:
+    st.session_state.catalog_owner = None
+
+if "catalog" not in st.session_state or st.session_state.catalog_owner != local_user:
+    if local_user:
+        st.session_state.catalog = get_user_catalog(local_user)
+    else:
+        st.session_state.catalog = _default_catalog()
+    st.session_state.catalog_owner = local_user
 
 categories = list(st.session_state.catalog.keys())
 
