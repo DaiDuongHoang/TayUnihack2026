@@ -132,7 +132,7 @@ def add_clothe_item():
                     )
                     if local_user:
                         add_clothing_item(
-                            username=local_user,
+                            email=local_user,
                             item_name=uploaded_item_name,
                             image_data=image_data,
                         )
@@ -147,7 +147,7 @@ def add_clothe_item():
                 )
                 if local_user:
                     add_clothing_item(
-                        username=local_user,
+                        email=local_user,
                         item_name=clean_item_name,
                         cloth_type=selected_cloth_type,
                         color=manual_color,

@@ -11,9 +11,11 @@ _database = importlib.import_module("database")
 
 
 def add_clothing_item(*args, **kwargs):
-    # Backward compatibility: some callers still pass `username=`.
-    if "username" in kwargs and "email" not in kwargs:
-        kwargs["email"] = kwargs.pop("username")
+    # Backward compatibility: callers may still pass `username=`.
+    username = kwargs.pop("username", None)
+    email = kwargs.get("email")
+    if (email is None or str(email).strip() == "") and username is not None:
+        kwargs["email"] = username
     return _database.add_clothing_item(*args, **kwargs)
 
 
