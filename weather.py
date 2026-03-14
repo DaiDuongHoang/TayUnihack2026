@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
-import os
 from typing import Any
 
-import requests
 import streamlit as st
+
+from openweatherapi import fetch_weather_bundle
 
 
 class MockWeatherRepository:
@@ -60,13 +60,13 @@ class OpenWeatherRepository:
 
 	def __init__(
 		self,
-		api_key: str | None,
 		fallback_repository: MockWeatherRepository,
-		city_query: str = "Melbourne,AU",
+		locality: str = "Melbourne",
+		country: str = "AU",
 	) -> None:
-		self.api_key = api_key
-		self.city_query = city_query
 		self.fallback_repository = fallback_repository
+		self.locality = locality
+		self.country = country
 		self.used_fallback = False
 		self.error_message = ""
 		self.last_synced_at: datetime | None = None
@@ -75,26 +75,11 @@ class OpenWeatherRepository:
 		self.used_fallback = False
 		self.error_message = ""
 
-		if not self.api_key:
-			self._set_fallback("OPENWEATHER_API_KEY is missing.")
-			return self.fallback_repository.get_hourly_forecast(hours=hours)
-
-		url = "https://api.openweathermap.org/data/2.5/forecast"
-		current_url = "https://api.openweathermap.org/data/2.5/weather"
-		params = {
-			"q": self.city_query,
-			"appid": self.api_key,
-			"units": "metric",
-		}
-
 		try:
-			response = requests.get(url, params=params, timeout=12)
-			response.raise_for_status()
-			payload = response.json()
-			current_response = requests.get(current_url, params=params, timeout=12)
-			current_response.raise_for_status()
-			current_payload = current_response.json()
-		except requests.RequestException as exc:
+			weather_bundle = fetch_weather_bundle(self.locality, self.country)
+			payload = weather_bundle["forecast"]
+			current_payload = weather_bundle["current"]
+		except Exception as exc:
 			self._set_fallback(f"OpenWeather request failed: {exc}")
 			return self.fallback_repository.get_hourly_forecast(hours=hours)
 
@@ -232,8 +217,7 @@ class OpenWeatherRepository:
 		}
 
 	def get_location_label(self) -> str:
-		city_name = self.city_query.replace(",", ", ")
-		return city_name
+		return f"{self.locality}, {self.country}"
 
 	def _set_fallback(self, message: str) -> None:
 		self.used_fallback = True
@@ -500,28 +484,11 @@ class WeatherPage:
 		st.markdown("### 🗂️ Hourly Details")
 		display_rows = WeatherChartFactory.build_table_rows(hourly_rows)
 		st.dataframe(display_rows, use_container_width=True, hide_index=True)
-
-
-def resolve_openweather_api_key() -> str | None:
-	try:
-		key_from_secrets = st.secrets.get("OPENWEATHER_API_KEY")
-		if key_from_secrets:
-			return str(key_from_secrets)
-	except Exception:
-		pass
-
-	key_from_env = os.getenv("OPENWEATHER_API_KEY")
-	if key_from_env:
-		return key_from_env
-
-	return None
-
-
 fallback_repository = MockWeatherRepository()
 weather_repository = OpenWeatherRepository(
-	api_key=resolve_openweather_api_key(),
 	fallback_repository=fallback_repository,
-	city_query="Melbourne,AU",
+	locality="Melbourne",
+	country="AU",
 )
 
 weather_page = WeatherPage(weather_repository=weather_repository)
