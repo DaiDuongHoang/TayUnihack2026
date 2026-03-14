@@ -8,7 +8,15 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 _database = importlib.import_module("database")
-add_clothing_item = _database.add_clothing_item
+
+
+def add_clothing_item(*args, **kwargs):
+    # Backward compatibility: some callers still pass `username=`.
+    if "username" in kwargs and "email" not in kwargs:
+        kwargs["email"] = kwargs.pop("username")
+    return _database.add_clothing_item(*args, **kwargs)
+
+
 get_user_catalog = _database.get_user_catalog
 get_user_location = _database.get_user_location
 get_user_profile = _database.get_user_profile
