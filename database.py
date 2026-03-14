@@ -251,6 +251,24 @@ def verify_user(email: str, password: str) -> bool:
     return authenticate_user(email, password) is not None
 
 
+def reset_password(email: str, new_password: str) -> bool:
+    """Reset the password for an existing local account."""
+    normalized_email = _normalize_email(email)
+    with get_connection() as conn:
+        user = conn.execute(
+            "SELECT id, auth_provider FROM users WHERE username = ?",
+            (normalized_email,),
+        ).fetchone()
+        if user is None or user["auth_provider"] != "local":
+            return False
+        conn.execute(
+            "UPDATE users SET password = ? WHERE id = ?",
+            (_hash_password(new_password), int(user["id"])),
+        )
+        conn.commit()
+        return True
+
+
 def get_user_profile(email: str) -> dict[str, str] | None:
     user = _resolve_user(email)
     if user is None:

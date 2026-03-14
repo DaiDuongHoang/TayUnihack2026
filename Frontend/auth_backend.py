@@ -13,6 +13,7 @@ db_authenticate_user = _database.authenticate_user
 db_get_user_profile = _database.get_user_profile
 db_upsert_google_user = _database.upsert_google_user
 db_verify_user = _database.verify_user
+db_reset_password = _database.reset_password
 
 EMAIL_PATTERN = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.IGNORECASE)
 
@@ -78,6 +79,24 @@ def sync_google_user(
     if not clean_email:
         return None
     return db_upsert_google_user(clean_email, first_name.strip(), google_subject)
+
+
+def reset_password(email: str, new_password: str) -> tuple[bool, str]:
+    clean_email = _normalize_email(email)
+    if not clean_email:
+        return False, "Email is required."
+    if not EMAIL_PATTERN.match(clean_email):
+        return False, "Enter a valid email address."
+    password_error = _validate_password(new_password)
+    if password_error:
+        return False, password_error
+    success = db_reset_password(clean_email, new_password)
+    if success:
+        return (
+            True,
+            "Password reset successfully. You can now log in with your new password.",
+        )
+    return False, "No local account found with that email address."
 
 
 def verify_user(email: str, password: str) -> bool:

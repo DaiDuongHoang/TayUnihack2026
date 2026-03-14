@@ -12,13 +12,14 @@ def load_backend_functions():
     try:
         module = importlib.import_module(BACKEND_MODULE)
     except ModuleNotFoundError:
-        return None, None, None, None
+        return None, None, None, None, None
 
     register_fn = getattr(module, "register_user", None)
     verify_fn = getattr(module, "verify_user", None)
     authenticate_fn = getattr(module, "authenticate_user", None)
     google_sync_fn = getattr(module, "sync_google_user", None)
-    return register_fn, verify_fn, authenticate_fn, google_sync_fn
+    reset_fn = getattr(module, "reset_password", None)
+    return register_fn, verify_fn, authenticate_fn, google_sync_fn, reset_fn
 
 
 (
@@ -26,7 +27,14 @@ def load_backend_functions():
     backend_verify_user,
     backend_authenticate_user,
     backend_sync_google_user,
+    backend_reset_password,
 ) = load_backend_functions()
+
+
+def reset_user_password(email: str, new_password: str) -> tuple[bool, str]:
+    if backend_reset_password is None:
+        return False, "Password reset is not available. Backend not connected."
+    return backend_reset_password(email.strip(), new_password)
 
 
 def register_user(first_name: str, email: str, password: str) -> tuple[bool, str]:
@@ -65,8 +73,14 @@ def is_google_logged_in() -> bool:
     return bool(getattr(st.user, "is_logged_in", False))
 
 
+def is_guest() -> bool:
+    return bool(st.session_state.get("is_guest", False))
+
+
 def is_authenticated() -> bool:
-    return is_google_logged_in() or bool(st.session_state.get("local_user"))
+    return (
+        is_google_logged_in() or bool(st.session_state.get("local_user")) or is_guest()
+    )
 
 
 def _sync_google_profile() -> dict | None:
@@ -87,6 +101,13 @@ def _sync_google_profile() -> dict | None:
 def _set_local_session(profile: dict) -> None:
     st.session_state.local_user = profile.get("email")
     st.session_state.local_user_name = profile.get("first_name") or "User"
+    st.session_state.is_guest = False
+
+
+def _set_guest_session() -> None:
+    st.session_state.local_user = None
+    st.session_state.local_user_name = "Guest"
+    st.session_state.is_guest = True
 
 
 def _inject_auth_styles() -> None:
@@ -172,6 +193,32 @@ def login_screen(
             else:
                 st.error(message)
 
+        with st.expander("Forgot your password?"):
+            with st.form("forgot_password_form"):
+                fp_email = st.text_input(
+                    "Email", placeholder="Enter your account email", key="fp_email"
+                )
+                fp_new_password = st.text_input(
+                    "New password", type="password", key="fp_new_pw"
+                )
+                fp_confirm_password = st.text_input(
+                    "Confirm new password", type="password", key="fp_confirm_pw"
+                )
+                fp_submitted = st.form_submit_button(
+                    "Reset Password", use_container_width=True
+                )
+            if fp_submitted:
+                if fp_new_password != fp_confirm_password:
+                    st.error("Passwords do not match.")
+                else:
+                    fp_success, fp_message = reset_user_password(
+                        fp_email, fp_new_password
+                    )
+                    if fp_success:
+                        st.success(fp_message)
+                    else:
+                        st.error(fp_message)
+
         st.caption("Or continue with Google")
         st.button(
             "Log in with Google",
@@ -182,6 +229,16 @@ def login_screen(
         st.caption(
             "Google login requires Streamlit auth settings in .streamlit/secrets.toml."
         )
+
+        st.divider()
+        st.caption("No account? Browse without saving your data.")
+        if st.button(
+            "Continue as Guest",
+            use_container_width=True,
+            key="guest_login_button",
+        ):
+            _set_guest_session()
+            st.rerun()
 
     with register_tab:
         st.subheader("Create local account")
@@ -236,6 +293,18 @@ def authenticated_view() -> None:
     google_logged_in = is_google_logged_in()
     local_user = st.session_state.get("local_user")
     local_user_name = st.session_state.get("local_user_name")
+    guest = is_guest()
+
+    if guest:
+        st.header("Welcome, Guest!")
+        st.info(
+            "You are browsing as a guest. Any changes you make will not be saved after this session."
+        )
+        if st.button("Log out (Guest)", use_container_width=True):
+            st.session_state.is_guest = False
+            st.session_state.local_user_name = None
+            st.rerun()
+        return
 
     if google_logged_in:
         google_profile = _sync_google_profile()
@@ -275,6 +344,8 @@ def main() -> None:
         st.session_state.local_user = None
     if "local_user_name" not in st.session_state:
         st.session_state.local_user_name = None
+    if "is_guest" not in st.session_state:
+        st.session_state.is_guest = False
 
     if is_authenticated():
         authenticated_view()
