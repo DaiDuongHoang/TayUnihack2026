@@ -1,4 +1,5 @@
 import streamlit as st
+from mainPage import add_clothe_item
 
 # CSS animations
 st.html("""
@@ -147,6 +148,10 @@ categories = list(st.session_state.catalog.keys())
 st.title("👗 My Wardrobe")
 st.divider()
 
+if st.button(
+    "➕ Add Item", key="add_item_button", type="primary", use_container_width=True
+):
+    add_clothe_item()
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
     row1 = st.columns(2, border=True)
