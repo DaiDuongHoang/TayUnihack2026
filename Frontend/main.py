@@ -37,7 +37,7 @@ if LOGO_BIG is not None:
 
 pages = {
     'Home': [
-        st.Page('dashboard.py', title='Home', icon='🏠'),
+        st.Page('dashboard.py', title='Dashboard', icon='🏡'),
         st.Page('wardrobe.py', title='Wardrobe', icon='👗'),
         st.Page('weather.py', title='Weather', icon='🌦️'),
         st.Page('location.py', title='Location', icon='🎈'),
