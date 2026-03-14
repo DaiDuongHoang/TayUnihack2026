@@ -1,7 +1,7 @@
 # database.py
 import sqlite3
 
-DB_NAME = 'database.db'
+DB_NAME = "database.db"
 
 
 def get_connection():
@@ -17,3 +17,9 @@ def init_db():
             weather_type TEXT, -- Cold, Hot, Rainy
             image_path TEXT
         )""")
+
+
+def get_all_clothes():
+    with get_connection() as conn:
+        cursor = conn.execute("SELECT * FROM clothes")
+        return cursor.fetchall()
