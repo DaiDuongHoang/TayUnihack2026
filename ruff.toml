@@ -1,2 +1,2 @@
-[tool.ruff.format]
+[format]
 quote-style = "single"
