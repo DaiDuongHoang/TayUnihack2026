@@ -267,11 +267,11 @@ class WeatherChartFactory:
 						"y": {
 							"field": "temperature_c",
 							"type": "quantitative",
-							"title": "Temperature (C)",
+							"title": "Temperature (°C)",
 						},
 						"tooltip": [
 							{"field": "time_label", "type": "nominal", "title": "Time"},
-							{"field": "temperature_c", "type": "quantitative", "title": "Temperature (C)"},
+							{"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)"},
 							{"field": "description", "type": "nominal", "title": "Description"},
 							{"field": "humidity", "type": "quantitative", "title": "Humidity (%)"},
 							{"field": "wind_kmh", "type": "quantitative", "title": "Wind (km/h)"},
@@ -345,7 +345,7 @@ class WeatherChartFactory:
 			display_rows.append(
 				{
 					"🕒 Time": f"{time_emoji} {row['time'].strftime('%a %H:%M')}",
-					"🌡️ Temp (C)": row["temperature_c"],
+					"🌡️ Temp (°C)": row["temperature_c"],
 					"💧 Humidity (%)": row["humidity"],
 					"💨 Wind (km/h)": row["wind_kmh"],
 					"☁️ Description": f"{description_emoji} {row['description']}",
@@ -458,7 +458,7 @@ class WeatherPage:
 		max_wind = float(max(row["wind_kmh"] for row in hourly_rows))
 
 		m1, m2, m3 = st.columns(3)
-		m1.metric("🌡️ Current Temp", f"{current_temp:.1f} C")
+		m1.metric("🌡️ Current Temp", f"{current_temp:.1f} °C")
 		m2.metric("💧 Avg Humidity", f"{avg_humidity}%")
 		m3.metric("💨 Peak Wind", f"{max_wind:.1f} km/h")
 
@@ -476,9 +476,9 @@ class WeatherPage:
 
 		chart_data = {
 			"Time": [row["time"].strftime("%H:%M") for row in hourly_rows],
-			"Temperature (C)": [row["temperature_c"] for row in hourly_rows],
+			"Temperature (°C)": [row["temperature_c"] for row in hourly_rows],
 		}
-		st.line_chart(chart_data, x="Time", y="Temperature (C)", use_container_width=True)
+		st.line_chart(chart_data, x="Time", y="Temperature (°C)", use_container_width=True)
 
 	def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
 		st.markdown("### 🗂️ Hourly Details")
