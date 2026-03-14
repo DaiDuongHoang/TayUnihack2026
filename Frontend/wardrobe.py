@@ -1,11 +1,9 @@
 import streamlit as st
-import time
 from Authentication import is_authenticated, login_screen
 from data_backend import get_user_catalog
 from mainPage import add_clothe_item
 
 danger_delete_button = None
-LOG_DURATION_SECONDS = 3.8
 
 if not is_authenticated():
     login_screen(
@@ -31,25 +29,24 @@ st.html("""
 
 /* Apply to all buttons */
 div[data-testid="stButton"] button {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Apply to bordered column/grid boxes */
 div[data-testid="stColumn"] {
-    animation: slideFadeDown 0.4s ease forwards;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
 div[data-testid="stColumn"]:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-10px) scale(1.01);
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.20);
 }
 
 /* Apply to horizontal divider */
 div[data-testid="stDivider"] {
-    animation: slideFadeDown 0.4s ease 0.3s forwards;
-    opacity: 0; /* Start hidden until animation runs */
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
 }
 
 /* Stagger for buttons */
@@ -66,8 +63,8 @@ div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
 
 /* Keep hover effect on buttons */
 div[data-testid="stButton"] button:hover {
-    transform: translateY(-3px) scale(1.07);
-    box-shadow: 0px 10px 22px rgba(0, 0, 0, 0.28);
+    transform: translateY(-5px) scale(1.11);
+    box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
 }
 
 /* Dedicated animation for the Go Back button */
@@ -112,123 +109,54 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* Apply slideFadeDown animation to st.success (alert elements) */
+/* Delete button — danger pulse idle + shake on hover */
+@keyframes deleteDangerPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0);
+        border-color: rgba(239, 68, 68, 0.28);
+    }
+    50% {
+        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0.18);
+        border-color: rgba(239, 68, 68, 0.65);
+    }
+}
+
+@keyframes deleteShake {
+    0%   { transform: translateX(0) scale(1.04); }
+    25%  { transform: translateX(-2px) scale(1.05); }
+    50%  { transform: translateX(2px) scale(1.06); }
+    75%  { transform: translateX(-1px) scale(1.05); }
+    100% { transform: translateX(0) scale(1.04); }
+}
+
+[class*="st-key-del"] button {
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               deleteDangerPulse 2.0s ease-in-out 0.7s infinite !important;
+    border: 1.5px solid rgba(239, 68, 68, 0.32) !important;
+    color: #dc2626 !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease,
+                background 0.18s ease, border-color 0.18s ease !important;
+}
+
+[class*="st-key-del"] button:hover {
+    animation: deleteShake 0.42s ease-in-out infinite !important;
+    box-shadow: 0 14px 34px rgba(239, 68, 68, 0.55) !important;
+    background: rgba(254, 226, 226, 0.88) !important;
+    border-color: rgba(239, 68, 68, 0.75) !important;
+    color: #b91c1c !important;
+}
+
+/* Apply slideFadeDown animation to st.success (alert elements) */
 div[data-testid="stAlert"] {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 div[data-testid="stAlert"]:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-6px);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.14);
 }
 
-@keyframes deleteLogFadeAway {
-    0% {
-        opacity: 0;
-        transform: translateY(-6px);
-        max-height: 48px;
-    }
-    12% {
-        opacity: 1;
-        transform: translateY(0);
-        max-height: 48px;
-    }
-    78% {
-        opacity: 1;
-        transform: translateY(0);
-        max-height: 48px;
-    }
-    100% {
-        opacity: 0;
-        transform: translateY(-4px);
-        max-height: 0;
-    }
-}
-
-.delete-log-wrap {
-    position: static;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    width: fit-content;
-    margin: 0 auto 0.72rem auto;
-    padding: 0;
-    line-height: 1;
-}
-
-.delete-log-pill {
-    animation: deleteLogFadeAway 3.8s ease forwards;
-    display: inline-block;
-    font-size: 0.78rem;
-    font-weight: 600;
-    line-height: 1;
-    padding: 0.38rem 0.62rem;
-    border-radius: 999px;
-    border: 1px solid rgba(239, 68, 68, 0.35);
-    background: rgba(254, 242, 242, 0.95);
-    color: #b91c1c;
-    margin: 0 auto;
-}
-
-.delete-log-pill + .delete-log-pill {
-    margin-top: -0.30rem;
-}
-
-@keyframes addLogFadeAway {
-    0% {
-        opacity: 0;
-        transform: translateY(-6px);
-        max-height: 48px;
-    }
-    12% {
-        opacity: 1;
-        transform: translateY(0);
-        max-height: 48px;
-    }
-    78% {
-        opacity: 1;
-        transform: translateY(0);
-        max-height: 48px;
-    }
-    100% {
-        opacity: 0;
-        transform: translateY(-4px);
-        max-height: 0;
-    }
-}
-
-.add-log-wrap {
-    position: static;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    width: fit-content;
-    margin: 0 auto 0.72rem auto;
-    padding: 0;
-    line-height: 1;
-}
-
-.add-log-pill {
-    animation: addLogFadeAway 3.8s ease forwards;
-    display: inline-block;
-    font-size: 0.78rem;
-    font-weight: 600;
-    line-height: 1;
-    padding: 0.38rem 0.62rem;
-    border-radius: 999px;
-    border: 1px solid rgba(16, 185, 129, 0.4);
-    background: rgba(236, 253, 245, 0.98);
-    color: #065f46;
-    margin: 0 auto;
-}
-
-.add-log-pill + .add-log-pill {
-    margin-top: -0.30rem;
-}
 </style>
 """)
 
@@ -281,69 +209,14 @@ categories = list(st.session_state.catalog.keys())
 st.title("👗 My Wardrobe")
 st.divider()
 
-if "wardrobe_delete_logs" not in st.session_state:
-    st.session_state.wardrobe_delete_logs = []
-
-if "wardrobe_add_logs" not in st.session_state:
-    st.session_state.wardrobe_add_logs = []
-
 feedback_message = st.session_state.pop("wardrobe_feedback", None)
 if feedback_message:
     if feedback_message == "Item deleted.":
-        st.session_state.wardrobe_delete_logs.append(
-            {
-                "id": time.time_ns(),
-                "created_at": time.time(),
-                "message": "Item deleted",
-            }
-        )
+        st.toast("**Item deleted**", icon="❌", duration="short")
     elif feedback_message.startswith("Added "):
-        st.session_state.wardrobe_add_logs.append(
-            {
-                "id": time.time_ns(),
-                "created_at": time.time(),
-                "message": feedback_message,
-            }
-        )
+        st.toast(feedback_message, icon="✅", duration="short")
     else:
         st.success(feedback_message)
-
-now = time.time()
-st.session_state.wardrobe_delete_logs = [
-    log
-    for log in st.session_state.wardrobe_delete_logs
-    if now - float(log.get("created_at", 0.0)) < LOG_DURATION_SECONDS
-]
-
-st.session_state.wardrobe_add_logs = [
-    log
-    for log in st.session_state.wardrobe_add_logs
-    if now - float(log.get("created_at", 0.0)) < LOG_DURATION_SECONDS
-]
-
-if st.session_state.wardrobe_add_logs:
-    add_logs_html = ["<div class='add-log-wrap'>"]
-    for log in st.session_state.wardrobe_add_logs:
-        age = max(0.0, now - float(log.get("created_at", now)))
-        capped_age = min(LOG_DURATION_SECONDS, age)
-        msg = str(log.get("message", "Added item"))
-        add_logs_html.append(
-            f"<div class='add-log-pill' style='animation-delay: -{capped_age:.3f}s'>{msg}</div>"
-        )
-    add_logs_html.append("</div>")
-    st.markdown("".join(add_logs_html), unsafe_allow_html=True)
-
-if st.session_state.wardrobe_delete_logs:
-    delete_logs_html = ["<div class='delete-log-wrap'>"]
-    for log in st.session_state.wardrobe_delete_logs:
-        age = max(0.0, now - float(log.get("created_at", now)))
-        capped_age = min(LOG_DURATION_SECONDS, age)
-        msg = str(log.get("message", "Item deleted"))
-        delete_logs_html.append(
-            f"<div class='delete-log-pill' style='animation-delay: -{capped_age:.3f}s'>{msg}</div>"
-        )
-    delete_logs_html.append("</div>")
-    st.markdown("".join(delete_logs_html), unsafe_allow_html=True)
 
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
@@ -424,13 +297,7 @@ else:
                             st.session_state.catalog[
                                 st.session_state.selected_category
                             ].pop(idx)
-                            st.session_state.wardrobe_delete_logs.append(
-                                {
-                                    "id": time.time_ns(),
-                                    "created_at": time.time(),
-                                    "message": "Item deleted",
-                                }
-                            )
+                            st.session_state.wardrobe_feedback = "Item deleted."
                             st.rerun()
 
                         delete_key = (

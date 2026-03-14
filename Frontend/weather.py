@@ -53,7 +53,9 @@ class MockWeatherRepository:
                     "time": timestamp,
                     "temperature_c": round(temp, 1),
                     "humidity": max(25, min(95, 50 + (i * 2) % 40 + day_offset * 2)),
-                    "wind_kmh": round(max(2.0, 6 + (i * 1.2) % 16 + day_offset * 0.4), 1),
+                    "wind_kmh": round(
+                        max(2.0, 6 + (i * 1.2) % 16 + day_offset * 0.4), 1
+                    ),
                     "description": description,
                 }
             )
@@ -469,7 +471,9 @@ class WeatherPage:
     def render(self) -> None:
         self._sync_location_from_saved_selection()
         all_hourly_rows = self._load_cached_or_fetch_rows(hours=72)
-        raw_hourly_rows = st.session_state.get("weather_cached_raw_rows", all_hourly_rows)
+        raw_hourly_rows = st.session_state.get(
+            "weather_cached_raw_rows", all_hourly_rows
+        )
         next_24_rows = all_hourly_rows[:24]
         if "weather_chart_day_offset" not in st.session_state:
             st.session_state.weather_chart_day_offset = 0
@@ -477,7 +481,7 @@ class WeatherPage:
             st.session_state.weather_chart_day_offset = min(
                 1, max(0, int(st.session_state.weather_chart_day_offset))
             )
- 
+
         location_label = "Melbourne, AU"
         if hasattr(self.weather_repository, "get_location_label"):
             location_label = self.weather_repository.get_location_label()
@@ -486,7 +490,9 @@ class WeatherPage:
         self._render_header(location_label)
         self._render_data_source_notice()
         self._render_metrics(next_24_rows)
-        self._render_large_forecast_chart(all_hourly_rows, location_label, raw_hourly_rows)
+        self._render_large_forecast_chart(
+            all_hourly_rows, location_label, raw_hourly_rows
+        )
         self._render_hourly_table(all_hourly_rows)
 
     def _sync_location_from_saved_selection(self) -> None:
@@ -501,7 +507,9 @@ class WeatherPage:
 
         if saved_city:
             target_locality = saved_city
-            target_country = self._to_country_code(saved_country) if saved_country else ""
+            target_country = (
+                self._to_country_code(saved_country) if saved_country else ""
+            )
         elif saved_country:
             # If city is missing, query by country/locality text instead of
             # mixing default Melbourne with a new country code.
@@ -573,10 +581,14 @@ class WeatherPage:
         st.session_state[cache_key] = rows
         st.session_state["weather_cached_raw_rows"] = raw_rows
         st.session_state[meta_key] = {
-            "used_fallback": bool(getattr(self.weather_repository, "used_fallback", False)),
+            "used_fallback": bool(
+                getattr(self.weather_repository, "used_fallback", False)
+            ),
             "error_message": str(getattr(self.weather_repository, "error_message", "")),
             "last_synced_at": getattr(self.weather_repository, "last_synced_at", None),
-            "timezone_offset_seconds": int(getattr(self.weather_repository, "timezone_offset_seconds", 0)),
+            "timezone_offset_seconds": int(
+                getattr(self.weather_repository, "timezone_offset_seconds", 0)
+            ),
             "locality": str(getattr(self.weather_repository, "locality", "")),
             "country": str(getattr(self.weather_repository, "country", "")).upper(),
         }
@@ -795,7 +807,9 @@ class WeatherPage:
                     "Weather service is temporarily unavailable. Showing backup weather data for now."
                 )
             else:
-                st.warning("Live weather is unavailable right now. Showing backup weather data.")
+                st.warning(
+                    "Live weather is unavailable right now. Showing backup weather data."
+                )
 
             if error_message:
                 st.caption(f"Technical details: {error_message}")
@@ -827,6 +841,7 @@ class WeatherPage:
                 key="refresh_weather_button",
                 use_container_width=False,
                 help="Refresh live weather",
+                type="primary",
             )
 
         if refresh_clicked:
@@ -854,7 +869,9 @@ class WeatherPage:
         raw_hourly_rows: list[dict[str, Any]],
     ) -> None:
         st.markdown("### 📈 Forecast Chart")
-        st.caption("🌡️ Today shows the next 12 hours. Tomorrow shows full day forecast. The red dot marks the current hour.")
+        st.caption(
+            "🌡️ Today shows the next 12 hours. Tomorrow shows full day forecast. The red dot marks the current hour."
+        )
         st.markdown(
             f"""
             <div style=\"text-align: center; font-weight: 600; color: #334155; margin-bottom: 0.5rem;\">
@@ -871,9 +888,11 @@ class WeatherPage:
         with c_prev:
             if selected_offset > 0:
                 if st.button(
-                    "⬅️ Previous Day",
+                    " **Previous Day**",
                     key="chart_prev_day",
                     use_container_width=True,
+                    type="primary",
+                    icon="⬅️",
                 ):
                     current = int(st.session_state.get("weather_chart_day_offset", 0))
                     st.session_state.weather_chart_day_offset = max(0, current - 1)
@@ -886,15 +905,17 @@ class WeatherPage:
             selected_date = today + timedelta(days=selected_offset)
             day_title = ["Today", "Tomorrow"][selected_offset]
             st.markdown(
-                f"<div style=\"text-align:center; font-weight:700; margin-top:0.3rem;\">{day_title} ({selected_date.strftime('%d %b')})</div>",
+                f'<div style="text-align:center; font-weight:700; margin-top:0.3rem;">{day_title} ({selected_date.strftime("%d %b")})</div>',
                 unsafe_allow_html=True,
             )
         with c_next:
             if selected_offset < 1:
                 if st.button(
-                    "Next Day ➡️",
+                    "**Next Day**",
                     key="chart_next_day",
                     use_container_width=True,
+                    icon="➡️",
+                    type="primary",
                 ):
                     current = int(st.session_state.get("weather_chart_day_offset", 0))
                     st.session_state.weather_chart_day_offset = min(1, current + 1)
@@ -907,7 +928,9 @@ class WeatherPage:
         selected_date = today + timedelta(days=selected_offset)
 
         day_rows = [row for row in hourly_rows if row["time"].date() == selected_date]
-        raw_day_rows = [row for row in raw_hourly_rows if row["time"].date() == selected_date]
+        raw_day_rows = [
+            row for row in raw_hourly_rows if row["time"].date() == selected_date
+        ]
         if selected_offset != 0:
             day_rows = raw_day_rows
 
@@ -933,7 +956,8 @@ class WeatherPage:
                     "time_iso": row["time"].strftime("%Y-%m-%dT%H:%M:%S"),
                     "time_label": row["time"].strftime("%H:%M"),
                     "temperature_c": row["temperature_c"],
-                    "is_current_hour": row["time"].hour == current_hour and row["time"].date() == current_date,
+                    "is_current_hour": row["time"].hour == current_hour
+                    and row["time"].date() == current_date,
                 }
                 for row in next_12_rows
             ]
@@ -949,7 +973,11 @@ class WeatherPage:
             ]
 
         temp_source_rows = raw_hourly_rows if raw_hourly_rows else hourly_rows
-        temp_values = [float(row["temperature_c"]) for row in temp_source_rows if "temperature_c" in row]
+        temp_values = [
+            float(row["temperature_c"])
+            for row in temp_source_rows
+            if "temperature_c" in row
+        ]
         if temp_values:
             y_min = round(min(temp_values) - 1.0, 1)
             y_max = round(max(temp_values) + 1.0, 1)
@@ -976,12 +1004,22 @@ class WeatherPage:
                         },
                         "tooltip": [
                             {"field": "time_label", "type": "nominal", "title": "Time"},
-                            {"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)", "format": ".1f"},
+                            {
+                                "field": "temperature_c",
+                                "type": "quantitative",
+                                "title": "Temperature (°C)",
+                                "format": ".1f",
+                            },
                         ],
                     },
                 },
                 {
-                    "mark": {"type": "point", "filled": True, "size": 42, "color": "#0284c7"},
+                    "mark": {
+                        "type": "point",
+                        "filled": True,
+                        "size": 42,
+                        "color": "#0284c7",
+                    },
                     "transform": [{"filter": "datum.temperature_c != null"}],
                     "encoding": {
                         "x": {
@@ -991,12 +1029,22 @@ class WeatherPage:
                         "y": {"field": "temperature_c", "type": "quantitative"},
                         "tooltip": [
                             {"field": "time_label", "type": "nominal", "title": "Time"},
-                            {"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)", "format": ".1f"},
+                            {
+                                "field": "temperature_c",
+                                "type": "quantitative",
+                                "title": "Temperature (°C)",
+                                "format": ".1f",
+                            },
                         ],
                     },
                 },
                 {
-                    "mark": {"type": "point", "filled": True, "size": 120, "color": "#dc2626"},
+                    "mark": {
+                        "type": "point",
+                        "filled": True,
+                        "size": 120,
+                        "color": "#dc2626",
+                    },
                     "transform": [
                         {"filter": "datum.temperature_c != null"},
                         {"filter": "datum.is_current_hour == true"},
@@ -1009,7 +1057,12 @@ class WeatherPage:
                         "y": {"field": "temperature_c", "type": "quantitative"},
                         "tooltip": [
                             {"field": "time_label", "type": "nominal", "title": "Time"},
-                            {"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)", "format": ".1f"},
+                            {
+                                "field": "temperature_c",
+                                "type": "quantitative",
+                                "title": "Temperature (°C)",
+                                "format": ".1f",
+                            },
                         ],
                     },
                 },
@@ -1046,6 +1099,8 @@ class WeatherPage:
                 st.table(display_rows)
             else:
                 st.info("No hourly forecast available for tomorrow yet.")
+
+
 fallback_repository = MockWeatherRepository()
 weather_repository = OpenWeatherRepository(
     fallback_repository=fallback_repository,
@@ -1055,4 +1110,3 @@ weather_repository = OpenWeatherRepository(
 
 weather_page = WeatherPage(weather_repository=weather_repository)
 weather_page.render()
-

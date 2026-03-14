@@ -137,7 +137,7 @@ def add_clothe_item():
                             image_data=image_data,
                         )
                 st.session_state.wardrobe_feedback = (
-                    f"Added {len(uploaded_files)} item(s) to {category}."
+                    f"**Added {len(uploaded_files)} item(s) to {category}.**"
                 )
             else:
                 category = _add_item_to_catalog(
@@ -153,7 +153,7 @@ def add_clothe_item():
                         color=manual_color,
                         wardrobe_category=category,
                     )
-                st.session_state.wardrobe_feedback = f"Added {_plain_cloth_type_name(selected_cloth_type)} to {category}."
+                st.session_state.wardrobe_feedback = f"**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**"
 
             st.rerun()
 
