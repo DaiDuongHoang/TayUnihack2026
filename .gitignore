@@ -232,7 +232,6 @@ __pycache__/
 
 # Large datasets and model files 
 datasets/
-models/*.pt
 models/*.h5
 
 # mongoDB
@@ -240,5 +239,17 @@ Thumbs.db
 .DS_Store
 
 # Jupyter Notebook files and checkpoints
-*.ipynb
 .ipynb_checkpoints/
+
+# Ignores dataset files
+*.csv
+*dataset.zip
+*yolo_dataset/
+runs/
+
+# Ignore YOLOv8 models
+yolov8m-cls.pt
+yolov8n-cls.pt
+
+# Ignore testing operations
+*testing*
