@@ -2,9 +2,73 @@ import streamlit as st
 import pycountry
 import geonamescache
 
+
+st.html("""
+<style>
+/* Slide-fade-DOWN keyframe */
+@keyframes slideFadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Apply to all buttons */
+div[data-testid="stButton"] button {
+    animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Apply to bordered column/grid boxes */
+div[data-testid="stColumn"] {
+    animation: slideFadeDown 0.4s ease forwards;
+}
+
+/* Apply to st.container(border=True) boxes */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    animation: slideFadeDown 0.4s ease forwards;
+    opacity: 0;
+}
+
+/* Apply to horizontal divider */
+div[data-testid="stDivider"] {
+    animation: slideFadeDown 0.4s ease 0.3s forwards;
+    opacity: 0;
+}
+
+/* Stagger for buttons */
+div[data-testid="stButton"]:nth-child(1) button { animation-delay: 0.0s; }
+div[data-testid="stButton"]:nth-child(2) button { animation-delay: 0.1s; }
+div[data-testid="stButton"]:nth-child(3) button { animation-delay: 0.2s; }
+div[data-testid="stButton"]:nth-child(4) button { animation-delay: 0.3s; }
+
+/* Stagger for grid boxes (columns) */
+div[data-testid="stColumn"]:nth-child(1) { animation-delay: 0.0s; }
+div[data-testid="stColumn"]:nth-child(2) { animation-delay: 0.1s; }
+div[data-testid="stColumn"]:nth-child(3) { animation-delay: 0.2s; }
+div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
+
+/* Stagger for bordered containers */
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(1) { animation-delay: 0.0s; }
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(2) { animation-delay: 0.1s; }
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(3) { animation-delay: 0.2s; }
+div[data-testid="stVerticalBlockBorderWrapper"]:nth-child(4) { animation-delay: 0.3s; }
+
+/* Keep hover effect on buttons */
+div[data-testid="stButton"] button:hover {
+    transform: scale(1.03);
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+}
+</style>
+""")
+
 st.set_page_config(page_title="Global Location Dashboard", layout="wide")
 
-st.title("Location Dashboard")
+st.title("🗺️ My Location")
 
 # ==========================================
 # Load country + city data
@@ -42,7 +106,7 @@ for country_name in country_to_cities:
     country_to_cities[country_name] = sorted(list(country_to_cities[country_name]))
 
 # ==========================================
-# Helper functions
+# Helper
 # ==========================================
 def get_countries():
     return all_countries
@@ -51,17 +115,17 @@ def get_cities(country):
     return country_to_cities.get(country, [])
 
 # ==========================================
-# Session state init
+# Session state
 # ==========================================
 countries = get_countries()
 
 if "country" not in st.session_state:
-    st.session_state.country = "Australia" if "Australia" in countries else countries[0]
+    st.session_state.country = countries[0]
 
-initial_cities = get_cities(st.session_state.country)
+cities = get_cities(st.session_state.country)
 
 if "city" not in st.session_state:
-    st.session_state.city = initial_cities[0] if initial_cities else ""
+    st.session_state.city = cities[0] if cities else ""
 
 if "saved_country" not in st.session_state:
     st.session_state.saved_country = st.session_state.country
@@ -74,63 +138,66 @@ if "saved_city" not in st.session_state:
 # ==========================================
 col1, col2 = st.columns(2)
 
-# -------- Country --------
+# Country
 with col1:
     selected_country = st.selectbox(
         "Country",
-        options=countries,
+        countries,
         index=countries.index(st.session_state.country)
-        if st.session_state.country in countries else 0
     )
 
 if selected_country != st.session_state.country:
     st.session_state.country = selected_country
-    updated_cities = get_cities(selected_country)
-    st.session_state.city = updated_cities[0] if updated_cities else ""
+    new_cities = get_cities(selected_country)
+    st.session_state.city = new_cities[0] if new_cities else ""
 
-# -------- City --------
+# City
 filtered_cities = get_cities(st.session_state.country)
 
 with col2:
     if filtered_cities:
         selected_city = st.selectbox(
             "City",
-            options=filtered_cities,
+            filtered_cities,
             index=filtered_cities.index(st.session_state.city)
-            if st.session_state.city in filtered_cities else 0
         )
     else:
         selected_city = ""
-        st.selectbox("City", options=["No city data available"], disabled=True)
+        st.selectbox("City", ["No data"], disabled=True)
 
 if selected_city != st.session_state.city:
     st.session_state.city = selected_city
 
 st.markdown("")
 
-# -------- Save button --------
+# Save button
 if st.button("Save Changes", use_container_width=True):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
-    st.success("Location saved successfully.")
+    st.success("Location saved!")
 
 # ==========================================
-# Summary box
+# Summary (STREAMLIT VERSION)
 # ==========================================
-st.markdown("### Summary")
 
-summary_html = f"""
-<div style="
-    border: 1px solid #dcdcdc;
-    border-radius: 12px;
-    padding: 20px;
-    background-color: #f8f9fa;
-    margin-top: 10px;
-">
-    <h4 style="margin-top: 0;">Saved Location</h4>
-    <p><strong>Country:</strong> {st.session_state.saved_country or 'N/A'}</p>
-    <p><strong>City:</strong> {st.session_state.saved_city or 'N/A'}</p>
-</div>
-"""
+st.divider()
 
-st.markdown(summary_html, unsafe_allow_html=True)
+st.subheader("Summary")
+
+summary_container = st.container(border=True)
+
+with summary_container:
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric(
+            label="Country",
+            value=st.session_state.saved_country or "N/A"
+        )
+
+    with col2:
+        st.metric(
+            label="City",
+            value=st.session_state.saved_city or "N/A"
+        )

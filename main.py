@@ -1,5 +1,7 @@
 import streamlit as st
 
+# RUN THIS IN STREAMLIT FIRST
+
 pages = {
     "Home": [
         st.Page("mainPage.py", title="Home", icon="🏠"),
