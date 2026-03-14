@@ -1,4 +1,57 @@
 import streamlit as st
+from mainPage import add_clothe_item
+
+# CSS animations
+st.html("""
+<style>
+/* Slide-fade-DOWN keyframe */
+@keyframes slideFadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Apply to all buttons */
+div[data-testid="stButton"] button {
+    animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Apply to bordered column/grid boxes */
+div[data-testid="stColumn"] {
+    animation: slideFadeDown 0.4s ease forwards;
+}
+
+/* Apply to horizontal divider */
+div[data-testid="stDivider"] {
+    animation: slideFadeDown 0.4s ease 0.3s forwards;
+    opacity: 0; /* Start hidden until animation runs */
+}
+
+/* Stagger for buttons */
+div[data-testid="stButton"]:nth-child(1) button { animation-delay: 0.0s; }
+div[data-testid="stButton"]:nth-child(2) button { animation-delay: 0.1s; }
+div[data-testid="stButton"]:nth-child(3) button { animation-delay: 0.2s; }
+div[data-testid="stButton"]:nth-child(4) button { animation-delay: 0.3s; }
+
+/* Stagger for grid boxes */
+div[data-testid="stColumn"]:nth-child(1) { animation-delay: 0.0s; }
+div[data-testid="stColumn"]:nth-child(2) { animation-delay: 0.1s; }
+div[data-testid="stColumn"]:nth-child(3) { animation-delay: 0.2s; }
+div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
+
+/* Keep hover effect on buttons */
+div[data-testid="stButton"] button:hover {
+    transform: scale(1.03);
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+}
+</style>
+""")
 
 # Initialize session state
 if "selected_category" not in st.session_state:
@@ -33,17 +86,7 @@ if "catalog" not in st.session_state:
 categories = list(st.session_state.catalog.keys())
 
 # --- Add Clothes Dialog ---
-@st.dialog("Add Clothing Item")
-def add_clothing():
-    category = st.selectbox("Select Category", categories)
-    name = st.text_input("Item Name")
-    image_url = st.text_input("Image URL")
-    if st.button("Add", use_container_width=True):
-        if name and image_url:
-            st.session_state.catalog[category].append((name, image_url))
-            st.rerun()
-        else:
-            st.warning("Please fill in both name and image URL.")
+
 
 # --- Delete Clothes Dialog ---
 @st.dialog("Delete Clothing Item")
@@ -66,10 +109,10 @@ title_col, spacer, add_col, del_col = st.columns([6, 1, 0.5, 0.5])
 with title_col:
     st.title("My Wardrobe")
 with add_col:
-    if st.button("➕", use_container_width=True):
-        add_clothing()
+    if st.button("", icon="➕", width="stretch"):
+        add_clothe_item()
 with del_col:
-    if st.button("🗑️", use_container_width=True):
+    if st.button("", icon ="🗑️"):
         delete_clothing()
 
 st.divider()
