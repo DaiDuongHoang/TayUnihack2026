@@ -177,6 +177,8 @@ class OpenWeatherRepository:
 			humidity = int(round(self._interpolate_numeric(before["humidity"], after["humidity"], ratio)))
 			wind_kmh = self._interpolate_numeric(before["wind_kmh"], after["wind_kmh"], ratio)
 			description = before["description"] if ratio < 0.5 else after["description"]
+			if i > 0 and description.startswith("Now - "):
+				description = description.replace("Now - ", "", 1)
 
 			hourly_rows.append(
 				{
@@ -354,16 +356,42 @@ class WeatherChartFactory:
 	def build_table_rows(hourly_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 		display_rows: list[dict[str, Any]] = []
 		for row in hourly_rows:
+			time_emoji = WeatherChartFactory._time_emoji(row["time"].hour)
+			description_emoji = WeatherChartFactory._description_emoji(row["description"])
 			display_rows.append(
 				{
-					"🕒 Time": row["time"].strftime("%a %H:%M"),
+					"🕒 Time": f"{time_emoji} {row['time'].strftime('%a %H:%M')}",
 					"🌡️ Temp (C)": row["temperature_c"],
 					"💧 Humidity (%)": row["humidity"],
 					"💨 Wind (km/h)": row["wind_kmh"],
-					"☁️ Description": row["description"],
+					"☁️ Description": f"{description_emoji} {row['description']}",
 				}
 			)
 		return display_rows
+
+	@staticmethod
+	def _time_emoji(hour: int) -> str:
+		# Daytime icon between 6AM and 5:59PM; moon icon otherwise.
+		return "☀️" if 6 <= hour < 18 else "🌙"
+
+	@staticmethod
+	def _description_emoji(description: str) -> str:
+		desc = description.lower()
+		if "thunder" in desc:
+			return "⛈️"
+		if "rain" in desc or "drizzle" in desc:
+			return "🌧️"
+		if "snow" in desc:
+			return "❄️"
+		if "mist" in desc or "fog" in desc or "haze" in desc:
+			return "🌫️"
+		if "overcast" in desc:
+			return "☁️"
+		if "cloud" in desc:
+			return "⛅"
+		if "clear" in desc:
+			return "☀️"
+		return "🌤️"
 
 
 class WeatherPage:
@@ -383,7 +411,7 @@ class WeatherPage:
 		self._render_header(location_label)
 		self._render_data_source_notice()
 		self._render_metrics(hourly_rows)
-		self._render_large_forecast_chart(hourly_rows)
+		self._render_large_forecast_chart(hourly_rows, location_label)
 		self._render_hourly_table(hourly_rows)
 
 	def _render_styles(self) -> None:
@@ -444,17 +472,23 @@ class WeatherPage:
 		current_temp = float(hourly_rows[0]["temperature_c"])
 		avg_humidity = int(sum(row["humidity"] for row in hourly_rows) / len(hourly_rows))
 		max_wind = float(max(row["wind_kmh"] for row in hourly_rows))
-		unique_conditions = len({row["description"] for row in hourly_rows})
 
-		m1, m2, m3, m4 = st.columns(4)
+		m1, m2, m3 = st.columns(3)
 		m1.metric("🌡️ Current Temp", f"{current_temp:.1f} C")
 		m2.metric("💧 Avg Humidity", f"{avg_humidity}%")
 		m3.metric("💨 Peak Wind", f"{max_wind:.1f} km/h")
-		m4.metric("☁️ Condition Types", f"{unique_conditions}")
 
-	def _render_large_forecast_chart(self, hourly_rows: list[dict[str, Any]]) -> None:
+	def _render_large_forecast_chart(self, hourly_rows: list[dict[str, Any]], location_label: str) -> None:
 		st.markdown("### 📈 Next 24 Hours")
 		st.caption("🌡️ Live temperature trend for the next 24 hours (hourly points from current hour).")
+		st.markdown(
+			f"""
+			<div style=\"text-align: center; font-weight: 600; color: #334155; margin-bottom: 0.5rem;\">
+				📍 {location_label}
+			</div>
+			""",
+			unsafe_allow_html=True,
+		)
 
 		chart_data = {
 			"Time": [row["time"].strftime("%H:%M") for row in hourly_rows],
