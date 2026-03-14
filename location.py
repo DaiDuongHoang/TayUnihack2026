@@ -68,7 +68,7 @@ div[data-testid="stButton"] button:hover {
 
 st.set_page_config(page_title="Global Location Dashboard", layout="wide")
 
-st.title("Location Dashboard")
+st.title("🗺️ My Location")
 
 # ==========================================
 # Load country + city data
