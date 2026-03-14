@@ -28,19 +28,22 @@ class MockWeatherRepository:
 	def get_hourly_forecast(self, hours: int = 24) -> list[dict[str, Any]]:
 		now = datetime.now().replace(minute=0, second=0, microsecond=0)
 		rows: list[dict[str, Any]] = []
+		day_biases = [0.0, 1.6, -1.1, 0.9, -0.5, 0.7, -0.8]
 
 		for i in range(hours):
 			timestamp = now + timedelta(hours=i)
+			day_offset = (timestamp.date() - now.date()).days
+			day_bias = day_biases[day_offset % len(day_biases)]
 			base_temp = 18 + (5 if 11 <= timestamp.hour <= 16 else 0)
-			temp = base_temp - abs(14 - timestamp.hour) * 0.55
-			description = self._pick_description(timestamp.hour, i)
+			temp = base_temp - abs(14 - timestamp.hour) * 0.55 + day_bias
+			description = self._pick_description(timestamp.hour, i + day_offset)
 
 			rows.append(
 				{
 					"time": timestamp,
 					"temperature_c": round(temp, 1),
-					"humidity": 50 + (i * 2) % 40,
-					"wind_kmh": round(6 + (i * 1.2) % 16, 1),
+					"humidity": max(25, min(95, 50 + (i * 2) % 40 + day_offset * 2)),
+					"wind_kmh": round(max(2.0, 6 + (i * 1.2) % 16 + day_offset * 0.4), 1),
 					"description": description,
 				}
 			)
@@ -76,6 +79,7 @@ class OpenWeatherRepository:
 		self.error_message = ""
 		self.last_synced_at: datetime | None = None
 		self.timezone_offset_seconds: int = 0
+		self.raw_forecast_rows: list[dict[str, Any]] = []
 
 	def get_hourly_forecast(self, hours: int = 24) -> list[dict[str, Any]]:
 		self.used_fallback = False
@@ -120,6 +124,7 @@ class OpenWeatherRepository:
 			)
 
 		current_row = self._build_current_row(current_payload)
+		self.raw_forecast_rows = sorted(rows.copy(), key=lambda row: row["time"])
 		known_points = rows.copy()
 		if current_row is not None:
 			known_points.append(current_row)
@@ -394,9 +399,14 @@ class WeatherPage:
 	def render(self) -> None:
 		self._sync_location_from_saved_selection()
 		all_hourly_rows = self._load_cached_or_fetch_rows(hours=72)
+		raw_hourly_rows = st.session_state.get("weather_cached_raw_rows", all_hourly_rows)
 		next_24_rows = all_hourly_rows[:24]
 		if "weather_chart_day_offset" not in st.session_state:
 			st.session_state.weather_chart_day_offset = 0
+		else:
+			st.session_state.weather_chart_day_offset = min(
+				1, max(0, int(st.session_state.weather_chart_day_offset))
+			)
  
 		location_label = "Melbourne, AU"
 		if hasattr(self.weather_repository, "get_location_label"):
@@ -406,7 +416,7 @@ class WeatherPage:
 		self._render_header(location_label)
 		self._render_data_source_notice()
 		self._render_metrics(next_24_rows)
-		self._render_large_forecast_chart(all_hourly_rows, location_label)
+		self._render_large_forecast_chart(all_hourly_rows, location_label, raw_hourly_rows)
 		self._render_hourly_table(all_hourly_rows)
 
 	def _sync_location_from_saved_selection(self) -> None:
@@ -438,6 +448,7 @@ class WeatherPage:
 		# Location changed — invalidate cache so new data is fetched.
 		st.session_state.pop("weather_cached_rows", None)
 		st.session_state.pop("weather_cached_meta", None)
+		st.session_state.pop("weather_cached_raw_rows", None)
 
 	def _to_country_code(self, country_name_or_code: str) -> str:
 		country = country_name_or_code.strip()
@@ -467,7 +478,9 @@ class WeatherPage:
 			return st.session_state[cache_key]
 
 		rows = self.weather_repository.get_hourly_forecast(hours=hours)
+		raw_rows = list(getattr(self.weather_repository, "raw_forecast_rows", rows))
 		st.session_state[cache_key] = rows
+		st.session_state["weather_cached_raw_rows"] = raw_rows
 		st.session_state[meta_key] = {
 			"used_fallback": bool(getattr(self.weather_repository, "used_fallback", False)),
 			"error_message": str(getattr(self.weather_repository, "error_message", "")),
@@ -598,6 +611,11 @@ class WeatherPage:
 				color: #334155;
 				font-size: 1rem;
 			}
+
+			/* Prevent the 3-dot element toolbar from covering chart points near top-right */
+			div[data-testid="stVegaLiteChart"] div[data-testid="stElementToolbar"] {
+				display: none !important;
+			}
 			</style>
 			"""
 		)
@@ -645,6 +663,7 @@ class WeatherPage:
 		if refresh_clicked:
 			st.session_state.pop("weather_cached_rows", None)
 			st.session_state.pop("weather_cached_meta", None)
+			st.session_state.pop("weather_cached_raw_rows", None)
 			st.rerun()
 
 	def _render_metrics(self, hourly_rows: list[dict[str, Any]]) -> None:
@@ -657,9 +676,14 @@ class WeatherPage:
 		m2.metric("💧 Avg Humidity", f"{avg_humidity}%")
 		m3.metric("💨 Peak Wind", f"{max_wind:.1f} km/h")
 
-	def _render_large_forecast_chart(self, hourly_rows: list[dict[str, Any]], location_label: str) -> None:
+	def _render_large_forecast_chart(
+		self,
+		hourly_rows: list[dict[str, Any]],
+		location_label: str,
+		raw_hourly_rows: list[dict[str, Any]],
+	) -> None:
 		st.markdown("### 📈 Forecast Chart")
-		st.caption("🌡️ Use the day controls to move across today, tomorrow, and the day after.")
+		st.caption("🌡️ Today shows the next 12 hours. Tomorrow shows full day forecast. The red dot marks the current hour.")
 		st.markdown(
 			f"""
 			<div style=\"text-align: center; font-weight: 600; color: #334155; margin-bottom: 0.5rem;\">
@@ -670,56 +694,173 @@ class WeatherPage:
 		)
 
 		today = self._location_now().date()
-		selected_offset = int(st.session_state.weather_chart_day_offset)
-		selected_date = today + timedelta(days=selected_offset)
+		selected_offset = int(st.session_state.get("weather_chart_day_offset", 0))
 
 		c_prev, c_label, c_next = st.columns([1, 2, 1])
 		with c_prev:
 			if selected_offset > 0:
-				if st.button("⬅️ Previous Day", key="chart_prev_day", use_container_width=True):
-					st.session_state.weather_chart_day_offset = max(0, selected_offset - 1)
+				if st.button(
+					"⬅️ Previous Day",
+					key="chart_prev_day",
+					use_container_width=True,
+				):
+					current = int(st.session_state.get("weather_chart_day_offset", 0))
+					st.session_state.weather_chart_day_offset = max(0, current - 1)
+					st.rerun()
 
 			else:
 				st.markdown("&nbsp;", unsafe_allow_html=True)
 		with c_label:
-			day_title = ["Today", "Tomorrow", "Day After"][selected_offset]
+			selected_offset = int(st.session_state.get("weather_chart_day_offset", 0))
+			selected_date = today + timedelta(days=selected_offset)
+			day_title = ["Today", "Tomorrow"][selected_offset]
 			st.markdown(
 				f"<div style=\"text-align:center; font-weight:700; margin-top:0.3rem;\">{day_title} ({selected_date.strftime('%d %b')})</div>",
 				unsafe_allow_html=True,
 			)
 		with c_next:
-			if selected_offset < 2:
-				if st.button("Next Day ➡️", key="chart_next_day", use_container_width=True):
-					st.session_state.weather_chart_day_offset = min(2, selected_offset + 1)
+			if selected_offset < 1:
+				if st.button(
+					"Next Day ➡️",
+					key="chart_next_day",
+					use_container_width=True,
+				):
+					current = int(st.session_state.get("weather_chart_day_offset", 0))
+					st.session_state.weather_chart_day_offset = min(1, current + 1)
+					st.rerun()
 
 			else:
 				st.markdown("&nbsp;", unsafe_allow_html=True)
 
+		selected_offset = int(st.session_state.get("weather_chart_day_offset", 0))
+		selected_date = today + timedelta(days=selected_offset)
+
 		day_rows = [row for row in hourly_rows if row["time"].date() == selected_date]
-		if not day_rows:
+		raw_day_rows = [row for row in raw_hourly_rows if row["time"].date() == selected_date]
+		if selected_offset != 0:
+			day_rows = raw_day_rows
+
+		if not day_rows and selected_offset != 0:
 			st.info("No hourly forecast available for this day.")
 			return
 
-		chart_data = {
-			"Time": [row["time"].strftime("%H:%M") for row in day_rows],
-			"Temperature (°C)": [row["temperature_c"] for row in day_rows],
+		now_local = self._location_now()
+		now_anchor = now_local.replace(minute=0, second=0, microsecond=0)
+		current_hour = int(now_local.hour)
+		current_date = now_local.date()
+
+		if selected_offset == 0:
+			next_12_rows = [row for row in hourly_rows if row["time"] >= now_anchor]
+			next_12_rows = sorted(next_12_rows, key=lambda row: row["time"])[:12]
+
+			if not next_12_rows:
+				st.info("No hourly forecast available for the next 12 hours.")
+				return
+
+			chart_values = [
+				{
+					"time_iso": row["time"].strftime("%Y-%m-%dT%H:%M:%S"),
+					"time_label": row["time"].strftime("%H:%M"),
+					"temperature_c": row["temperature_c"],
+					"is_current_hour": row["time"].hour == current_hour and row["time"].date() == current_date,
+				}
+				for row in next_12_rows
+			]
+		else:
+			chart_values = [
+				{
+					"time_iso": row["time"].strftime("%Y-%m-%dT%H:%M:%S"),
+					"time_label": row["time"].strftime("%H:%M"),
+					"temperature_c": row["temperature_c"],
+					"is_current_hour": False,
+				}
+				for row in day_rows
+			]
+
+		temp_source_rows = raw_hourly_rows if raw_hourly_rows else hourly_rows
+		temp_values = [float(row["temperature_c"]) for row in temp_source_rows if "temperature_c" in row]
+		if temp_values:
+			y_min = round(min(temp_values) - 1.0, 1)
+			y_max = round(max(temp_values) + 1.0, 1)
+		else:
+			y_min, y_max = 0.0, 40.0
+
+		chart_spec = {
+			"data": {"values": chart_values},
+			"layer": [
+				{
+					"mark": {"type": "line", "strokeWidth": 3, "color": "#0284c7"},
+					"encoding": {
+						"x": {
+							"field": "time_iso",
+							"type": "temporal",
+							"title": "Hour",
+							"axis": {"format": "%H:%M"},
+						},
+						"y": {
+							"field": "temperature_c",
+							"type": "quantitative",
+							"title": "Temperature (°C)",
+							"scale": {"domain": [y_min, y_max], "nice": False},
+						},
+						"tooltip": [
+							{"field": "time_label", "type": "nominal", "title": "Time"},
+							{"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)", "format": ".1f"},
+						],
+					},
+				},
+				{
+					"mark": {"type": "point", "filled": True, "size": 42, "color": "#0284c7"},
+					"transform": [{"filter": "datum.temperature_c != null"}],
+					"encoding": {
+						"x": {
+							"field": "time_iso",
+							"type": "temporal",
+						},
+						"y": {"field": "temperature_c", "type": "quantitative"},
+						"tooltip": [
+							{"field": "time_label", "type": "nominal", "title": "Time"},
+							{"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)", "format": ".1f"},
+						],
+					},
+				},
+				{
+					"mark": {"type": "point", "filled": True, "size": 120, "color": "#dc2626"},
+					"transform": [
+						{"filter": "datum.temperature_c != null"},
+						{"filter": "datum.is_current_hour == true"},
+					],
+					"encoding": {
+						"x": {
+							"field": "time_iso",
+							"type": "temporal",
+						},
+						"y": {"field": "temperature_c", "type": "quantitative"},
+						"tooltip": [
+							{"field": "time_label", "type": "nominal", "title": "Time"},
+							{"field": "temperature_c", "type": "quantitative", "title": "Temperature (°C)", "format": ".1f"},
+						],
+					},
+				},
+			],
 		}
-		st.line_chart(chart_data, x="Time", y="Temperature (°C)", use_container_width=True)
+
+		st.vega_lite_chart(
+			chart_spec,
+			use_container_width=True,
+			key=f"forecast_chart_{selected_date.isoformat()}_{selected_offset}",
+		)
 
 	def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
 		st.markdown("### 🕒 Hourly Details")
 
 		today = self._location_now().date()
 		tomorrow = today + timedelta(days=1)
-		day_after = today + timedelta(days=2)
 		today_rows = [row for row in hourly_rows if row["time"].date() == today]
 
 		tomorrow_rows = [row for row in hourly_rows if row["time"].date() == tomorrow]
-		day_after_rows = [row for row in hourly_rows if row["time"].date() == day_after]
 
-		tab_next, tab_tomorrow, tab_day_after = st.tabs(
-			["Next 24 Hours", "Tomorrow", "Day After"]
-		)
+		tab_next, tab_tomorrow = st.tabs(["Next 24 Hours", "Tomorrow"])
 
 		with tab_next:
 			if today_rows:
@@ -734,13 +875,6 @@ class WeatherPage:
 				st.dataframe(display_rows, use_container_width=True)
 			else:
 				st.info("No hourly forecast available for tomorrow yet.")
-
-		with tab_day_after:
-			if day_after_rows:
-				display_rows = WeatherChartFactory.build_table_rows(day_after_rows)
-				st.dataframe(display_rows, use_container_width=True)
-			else:
-				st.info("No hourly forecast available for the day after yet.")
 fallback_repository = MockWeatherRepository()
 weather_repository = OpenWeatherRepository(
 	fallback_repository=fallback_repository,

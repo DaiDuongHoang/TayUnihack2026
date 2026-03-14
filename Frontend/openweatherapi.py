@@ -5,7 +5,7 @@ from typing import Any
 import requests
 
 
-apiKey = "41e109373f8f73ecc6e713d278b7dcc6"
+apiKey = "f2ec9bda28d42b65e2de16b355d0ccc8"
 GEOCODE_URL = "http://api.openweathermap.org/geo/1.0/direct"
 CURRENT_WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"

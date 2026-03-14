@@ -13,6 +13,10 @@ CLOTH_TYPE_OPTIONS = [
     "👗 Skirt",
     "👖 Jeans",
     "👖 Pants",
+    "🧢 Hat",
+    "🕶️ Sunglasses",
+    "🧣 Scarf",
+    "🧤 Gloves",
 ]
 
 CATEGORY_BY_CLOTH_TYPE = {
@@ -27,6 +31,10 @@ CATEGORY_BY_CLOTH_TYPE = {
     "🧥 Jacket": "Outerwear 🧥",
     "🥼 Coat": "Outerwear 🧥",
     "🧥 Hoodie": "Outerwear 🧥",
+    "🧢 Hat": "Accessories ⌚",
+    "🕶️ Sunglasses": "Accessories ⌚",
+    "🧣 Scarf": "Accessories ⌚",
+    "🧤 Gloves": "Accessories ⌚",
 }
 
 
