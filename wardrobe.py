@@ -85,36 +85,9 @@ if "catalog" not in st.session_state:
 
 categories = list(st.session_state.catalog.keys())
 
-# --- Add Clothes Dialog ---
-
-
-# --- Delete Clothes Dialog ---
-@st.dialog("Delete Clothing Item")
-def delete_clothing():
-    category = st.selectbox("Select Category", categories)
-    items = st.session_state.catalog[category]
-    if items:
-        item_names = [item[0] for item in items]
-        to_delete = st.selectbox("Select Item to Delete", item_names)
-        if st.button("Delete", use_container_width=True):
-            st.session_state.catalog[category] = [
-                item for item in items if item[0] != to_delete
-            ]
-            st.rerun()
-    else:
-        st.info("No items in this category.")
 
 # --- Top bar: Title + Action Buttons ---
-title_col, spacer, add_col, del_col = st.columns([6, 1, 0.5, 0.5])
-with title_col:
-    st.title("My Wardrobe")
-with add_col:
-    if st.button("", icon="➕", width="stretch"):
-        add_clothe_item()
-with del_col:
-    if st.button("", icon ="🗑️"):
-        delete_clothing()
-
+st.title("👗 My Wardrobe")
 st.divider()
 
 # --- Category Grid (2x2) ---
@@ -127,13 +100,20 @@ if st.session_state.selected_category is None:
         with grid[i]:
             st.markdown(f"### {category}")
             st.write(f"{len(st.session_state.catalog[category])} item(s)")
-            if st.button(f"Open {category}", key=f"cat_{category}", use_container_width=True):
+            if st.button(
+                f"Open {category}", key=f"cat_{category}", use_container_width=True
+            ):
                 st.session_state.selected_category = category
                 st.rerun()
 
 # --- Clothing Grid ---
 else:
-    if st.button("← Back to Categories"):
+    if st.button(
+        "**Go Back**",
+        key="back_button",
+        type="primary",
+        icon="⬅️",
+    ):
         st.session_state.selected_category = None
         st.rerun()
 
@@ -150,5 +130,7 @@ else:
                 if i + j < len(items):
                     name, image = items[i + j]
                     with col:
-                        st.markdown(f"#### {name}")  # Adjust # level for size, add more # to decrease font size
+                        st.markdown(
+                            f"#### {name}"
+                        )  # Adjust # level for size, add more # to decrease font size
                         st.image(image)
