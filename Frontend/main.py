@@ -28,11 +28,15 @@ pages = {
     #     ],
 }
 
-st.caption(
-    "Welcome to the TayUnihack2026 App! Use the sidebar to navigate between Home, Wardrobe, Weather, and Location pages."
-)
-st.info(
-    "This app is designed to provide personalized clothing recommendations based on your wardrobe, local weather, and location. Please log in to access all features.",
+st.set_page_config(
+    page_title="Taylr",
+    page_icon="👗",
+    layout="centered",
+    menu_items={
+        "Get Help": "mailto:dhoa0014@student.monash.edu",
+        "Report a bug": "mailto:mvan0078@student.monash.edu",
+        "About": "Taylr is a personal wardrobe assistant that helps you manage your clothing items, plan outfits, and get weather-based recommendations. Built with Streamlit for a seamless and interactive experience.",
+    },
 )
 pg = st.navigation(pages)
 if __name__ == "__main__":
