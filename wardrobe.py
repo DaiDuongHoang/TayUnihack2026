@@ -4,6 +4,8 @@ import streamlit as st
 if "selected_category" not in st.session_state:
     st.session_state.selected_category = None
 
+
+# !!! Clothes catalogue !!!
 if "catalog" not in st.session_state:
     st.session_state.catalog = {
         "Top 👚": [
@@ -105,5 +107,5 @@ else:
                 if i + j < len(items):
                     name, image = items[i + j]
                     with col:
+                        st.markdown(f"#### {name}")  # Adjust # level for size, add more # to decrease font size
                         st.image(image)
-                        st.write(name)
