@@ -96,6 +96,17 @@ div[data-testid="stButton"] button:hover {
     box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55);
     filter: brightness(1.14) saturate(1.2);
 }
+
+/* Apply slideFadeDown animation to st.success (alert elements) */
+div[data-testid="stAlert"] {
+    animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+div[data-testid="stAlert"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
 </style>
 """)
 
