@@ -1,5 +1,4 @@
 import streamlit as st
-from mainPage import add_clothe_item
 
 # CSS animations
 st.html("""
@@ -25,6 +24,12 @@ div[data-testid="stButton"] button {
 /* Apply to bordered column/grid boxes */
 div[data-testid="stColumn"] {
     animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+div[data-testid="stColumn"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Apply to horizontal divider */
@@ -47,8 +52,49 @@ div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
 
 /* Keep hover effect on buttons */
 div[data-testid="stButton"] button:hover {
-    transform: scale(1.03);
-    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px) scale(1.07);
+    box-shadow: 0px 10px 22px rgba(0, 0, 0, 0.28);
+}
+
+/* Dedicated animation for the Go Back button */
+@keyframes backButtonFloat {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-7px);
+    }
+}
+
+@keyframes backButtonWiggle {
+    0% {
+        transform: translateX(-6px) scale(1.09) rotate(0deg);
+    }
+    25% {
+        transform: translateX(-10px) scale(1.11) rotate(-2deg);
+    }
+    50% {
+        transform: translateX(-6px) scale(1.12) rotate(2deg);
+    }
+    75% {
+        transform: translateX(-10px) scale(1.11) rotate(-1deg);
+    }
+    100% {
+        transform: translateX(-6px) scale(1.09) rotate(0deg);
+    }
+}
+
+.st-key-back_button button {
+    animation: backButtonFloat 1.8s ease-in-out infinite;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.st-key-back_button button:hover {
+    animation: backButtonWiggle 0.45s ease-in-out infinite;
+    box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55);
+    filter: brightness(1.14) saturate(1.2);
 }
 </style>
 """)
@@ -133,4 +179,4 @@ else:
                         st.markdown(
                             f"#### {name}"
                         )  # Adjust # level for size, add more # to decrease font size
-                        st.image(image)
+                        st.image(image, width="content")
