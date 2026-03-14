@@ -385,7 +385,10 @@ class WeatherPage:
 		self.weather_repository = weather_repository
 
 	def render(self) -> None:
-		hourly_rows = self.weather_repository.get_hourly_forecast()
+		all_hourly_rows = self._load_cached_or_fetch_rows(hours=72)
+		next_24_rows = all_hourly_rows[:24]
+		if "weather_chart_day_offset" not in st.session_state:
+			st.session_state.weather_chart_day_offset = 0
  
 		location_label = "Melbourne, AU"
 		if hasattr(self.weather_repository, "get_location_label"):
@@ -394,34 +397,98 @@ class WeatherPage:
 		self._render_styles()
 		self._render_header(location_label)
 		self._render_data_source_notice()
-		self._render_metrics(hourly_rows)
-		self._render_large_forecast_chart(hourly_rows, location_label)
-		self._render_hourly_table(hourly_rows)
+		self._render_metrics(next_24_rows)
+		self._render_large_forecast_chart(all_hourly_rows, location_label)
+		self._render_hourly_table(all_hourly_rows)
+
+	def _load_cached_or_fetch_rows(self, hours: int) -> list[dict[str, Any]]:
+		cache_key = "weather_cached_rows"
+		meta_key = "weather_cached_meta"
+
+		if cache_key in st.session_state:
+			return st.session_state[cache_key]
+
+		rows = self.weather_repository.get_hourly_forecast(hours=hours)
+		st.session_state[cache_key] = rows
+		st.session_state[meta_key] = {
+			"used_fallback": bool(getattr(self.weather_repository, "used_fallback", False)),
+			"error_message": str(getattr(self.weather_repository, "error_message", "")),
+			"last_synced_at": getattr(self.weather_repository, "last_synced_at", None),
+		}
+		return rows
 
 	def _render_styles(self) -> None:
-		st.markdown(
+		st.html(
 			"""
 			<style>
-				.weather-shell {
-					padding: 1.2rem;
-					border-radius: 16px;
-					background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 45%, #e0f2fe 100%);
-					border: 1px solid #bfdbfe;
-					margin-bottom: 1rem;
+			/* Slide-fade-DOWN keyframe */
+			@keyframes slideFadeDown {
+				from {
+					opacity: 0;
+					transform: translateY(-20px);
 				}
-				.weather-title {
-					font-size: 2rem;
-					font-weight: 700;
-					color: #0f172a;
-					margin-bottom: 0.3rem;
+				to {
+					opacity: 1;
+					transform: translateY(0);
 				}
-				.weather-subtitle {
-					color: #334155;
-					font-size: 1rem;
-				}
+			}
+
+			/* Apply to all buttons */
+			div[data-testid="stButton"] button {
+				animation: slideFadeDown 0.4s ease forwards;
+				transition: transform 0.2s ease, box-shadow 0.2s ease;
+			}
+
+			/* Apply to bordered column/grid boxes */
+			div[data-testid="stColumn"] {
+				animation: slideFadeDown 0.4s ease forwards;
+			}
+
+			/* Apply to horizontal divider */
+			div[data-testid="stDivider"] {
+				animation: slideFadeDown 0.4s ease 0.3s forwards;
+				opacity: 0;
+			}
+
+			/* Stagger for buttons */
+			div[data-testid="stButton"]:nth-child(1) button { animation-delay: 0.0s; }
+			div[data-testid="stButton"]:nth-child(2) button { animation-delay: 0.1s; }
+			div[data-testid="stButton"]:nth-child(3) button { animation-delay: 0.2s; }
+			div[data-testid="stButton"]:nth-child(4) button { animation-delay: 0.3s; }
+
+			/* Stagger for grid boxes */
+			div[data-testid="stColumn"]:nth-child(1) { animation-delay: 0.0s; }
+			div[data-testid="stColumn"]:nth-child(2) { animation-delay: 0.1s; }
+			div[data-testid="stColumn"]:nth-child(3) { animation-delay: 0.2s; }
+			div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
+
+			/* Keep hover effect on buttons */
+			div[data-testid="stButton"] button:hover {
+				transform: scale(1.03);
+				box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+			}
+
+			/* Weather page visual shell styling */
+			.weather-shell {
+				padding: 1.2rem;
+				border-radius: 16px;
+				background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 45%, #e0f2fe 100%);
+				border: 1px solid #bfdbfe;
+				margin-bottom: 1rem;
+				animation: slideFadeDown 0.5s ease forwards;
+			}
+			.weather-title {
+				font-size: 2rem;
+				font-weight: 700;
+				color: #0f172a;
+				margin-bottom: 0.3rem;
+			}
+			.weather-subtitle {
+				color: #334155;
+				font-size: 1rem;
+			}
 			</style>
-			""",
-			unsafe_allow_html=True,
+			"""
 		)
 
 	def _render_header(self, location_label: str) -> None:
@@ -436,20 +503,25 @@ class WeatherPage:
 		)
 
 	def _render_data_source_notice(self) -> None:
-		if hasattr(self.weather_repository, "used_fallback") and self.weather_repository.used_fallback:
+		meta = st.session_state.get("weather_cached_meta", {})
+		used_fallback = bool(meta.get("used_fallback", False))
+		error_message = str(meta.get("error_message", "Unknown error"))
+		last_synced_at = meta.get("last_synced_at")
+
+		if used_fallback:
 			st.warning(
 				"OpenWeather unavailable, showing mock data. "
-				f"Details: {getattr(self.weather_repository, 'error_message', 'Unknown error')}"
+				f"Details: {error_message or 'Unknown error'}"
 			)
 		else:
 			st.success("Live OpenWeather data loaded for Melbourne.")
 
-		if hasattr(self.weather_repository, "last_synced_at"):
-			last_synced_at = getattr(self.weather_repository, "last_synced_at")
-			if last_synced_at:
-				st.caption(f"Last synced: {last_synced_at.strftime('%d %b %Y %H:%M:%S')}")
+		if last_synced_at:
+			st.caption(f"Last synced: {last_synced_at.strftime('%d %b %Y %H:%M:%S')}")
 
 		if st.button("Refresh live weather", use_container_width=False):
+			st.session_state.pop("weather_cached_rows", None)
+			st.session_state.pop("weather_cached_meta", None)
 			st.rerun()
 
 	def _render_metrics(self, hourly_rows: list[dict[str, Any]]) -> None:
@@ -463,8 +535,8 @@ class WeatherPage:
 		m3.metric("💨 Peak Wind", f"{max_wind:.1f} km/h")
 
 	def _render_large_forecast_chart(self, hourly_rows: list[dict[str, Any]], location_label: str) -> None:
-		st.markdown("### 📈 Next 24 Hours")
-		st.caption("🌡️ Live temperature trend for the next 24 hours (hourly points from current hour).")
+		st.markdown("### 📈 Forecast Chart")
+		st.caption("🌡️ Use the day controls to move across today, tomorrow, and the day after.")
 		st.markdown(
 			f"""
 			<div style=\"text-align: center; font-weight: 600; color: #334155; margin-bottom: 0.5rem;\">
@@ -474,16 +546,78 @@ class WeatherPage:
 			unsafe_allow_html=True,
 		)
 
+		today = datetime.now().date()
+		selected_offset = int(st.session_state.weather_chart_day_offset)
+		selected_date = today + timedelta(days=selected_offset)
+
+		c_prev, c_label, c_next = st.columns([1, 2, 1])
+		with c_prev:
+			if selected_offset > 0:
+				if st.button("⬅️ Previous Day", key="chart_prev_day", use_container_width=True):
+					st.session_state.weather_chart_day_offset = max(0, selected_offset - 1)
+					st.rerun()
+			else:
+				st.markdown("&nbsp;", unsafe_allow_html=True)
+		with c_label:
+			day_title = ["Today", "Tomorrow", "Day After"][selected_offset]
+			st.markdown(
+				f"<div style=\"text-align:center; font-weight:700; margin-top:0.3rem;\">{day_title} ({selected_date.strftime('%d %b')})</div>",
+				unsafe_allow_html=True,
+			)
+		with c_next:
+			if selected_offset < 2:
+				if st.button("Next Day ➡️", key="chart_next_day", use_container_width=True):
+					st.session_state.weather_chart_day_offset = min(2, selected_offset + 1)
+					st.rerun()
+			else:
+				st.markdown("&nbsp;", unsafe_allow_html=True)
+
+		day_rows = [row for row in hourly_rows if row["time"].date() == selected_date]
+		if not day_rows:
+			st.info("No hourly forecast available for this day.")
+			return
+
 		chart_data = {
-			"Time": [row["time"].strftime("%H:%M") for row in hourly_rows],
-			"Temperature (°C)": [row["temperature_c"] for row in hourly_rows],
+			"Time": [row["time"].strftime("%H:%M") for row in day_rows],
+			"Temperature (°C)": [row["temperature_c"] for row in day_rows],
 		}
 		st.line_chart(chart_data, x="Time", y="Temperature (°C)", use_container_width=True)
 
 	def _render_hourly_table(self, hourly_rows: list[dict[str, Any]]) -> None:
 		st.markdown("### 🗂️ Hourly Details")
-		display_rows = WeatherChartFactory.build_table_rows(hourly_rows)
-		st.dataframe(display_rows, use_container_width=True, hide_index=True)
+
+		today = datetime.now().date()
+		tomorrow = today + timedelta(days=1)
+		day_after = today + timedelta(days=2)
+		today_rows = [row for row in hourly_rows if row["time"].date() == today]
+
+		tomorrow_rows = [row for row in hourly_rows if row["time"].date() == tomorrow]
+		day_after_rows = [row for row in hourly_rows if row["time"].date() == day_after]
+
+		tab_next, tab_tomorrow, tab_day_after = st.tabs(
+			["Next 24 Hours", "Tomorrow", "Day After"]
+		)
+
+		with tab_next:
+			if today_rows:
+				display_rows = WeatherChartFactory.build_table_rows(today_rows)
+				st.dataframe(display_rows, use_container_width=True, hide_index=True)
+			else:
+				st.info("No hourly forecast available for today yet.")
+
+		with tab_tomorrow:
+			if tomorrow_rows:
+				display_rows = WeatherChartFactory.build_table_rows(tomorrow_rows)
+				st.dataframe(display_rows, use_container_width=True, hide_index=True)
+			else:
+				st.info("No hourly forecast available for tomorrow yet.")
+
+		with tab_day_after:
+			if day_after_rows:
+				display_rows = WeatherChartFactory.build_table_rows(day_after_rows)
+				st.dataframe(display_rows, use_container_width=True, hide_index=True)
+			else:
+				st.info("No hourly forecast available for the day after yet.")
 fallback_repository = MockWeatherRepository()
 weather_repository = OpenWeatherRepository(
 	fallback_repository=fallback_repository,
