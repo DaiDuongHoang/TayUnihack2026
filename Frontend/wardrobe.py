@@ -11,8 +11,6 @@ from data_backend import (
     update_clothing_item,
 )
 
-danger_delete_button = None
-
 
 CLOTH_TYPE_OPTIONS = [
     '👕 T-Shirt',
@@ -773,23 +771,11 @@ else:
                         delete_key = (
                             f'del_{st.session_state.selected_category}_{item_index}'
                         )
-                        if danger_delete_button is not None:
-                            danger_delete_button(
-                                key=delete_key,
-                                data={
-                                    'start': 'Hold to Delete',
-                                    'continue': 'Keep holding...',
-                                    'completed': 'Deleted',
-                                },
-                                on_confirmed_change=_delete_item,
-                                width='content',
-                            )
-                        else:
-                            if st.button(
-                                'Delete',
-                                key=f'{delete_key}_fallback',
-                                type='secondary',
-                                icon='🗑️',
-                                width='stretch',
-                            ):
-                                _delete_item()
+                        if st.button(
+                            'Delete',
+                            key=f'{delete_key}_fallback',
+                            type='secondary',
+                            icon='🗑️',
+                            width='stretch',
+                        ):
+                            _delete_item()
