@@ -2,6 +2,7 @@ import streamlit as st
 from Authentication import is_authenticated, login_screen
 import base64
 import re
+from pathlib import Path
 from data_backend import get_user_location, get_user_catalog
 from loading_overlay import (
     show_loading_overlay,
@@ -101,19 +102,92 @@ def _description_emoji(description):
     return '🌤️'
 
 
+GUEST_ASSET_DIR = Path(__file__).resolve().parent / 'default_clothes_guest'
+GUEST_DEFAULT_ITEMS = {
+    'Top 👚': [
+        {'name': 'White T-Shirt', 'asset': 'white t-shirt.png'},
+        {'name': 'Blue Polo', 'asset': 'blue polo.png'},
+        {'name': 'Striped Shirt', 'asset': 'stripped shirt.png'},
+    ],
+    'Bottom 🩳': [
+        {'name': 'Chinos', 'asset': 'chinos.png'},
+        {'name': 'Joggers', 'asset': 'joggers.png'},
+        {'name': 'Jeans', 'asset': 'jeans.png'},
+    ],
+    'Outerwear 🧥': [
+        {'name': 'Denim Jacket', 'asset': 'Denim jacket.png'},
+        {'name': 'Trench Coat', 'asset': 'Trench coat.png'},
+        {'name': 'Puffer Vest', 'asset': 'puffer vest.png'},
+    ],
+    'Accessories ⌚': [
+        {'name': 'Leather Belt', 'asset': 'Leather belt.png'},
+        {'name': 'Wool Scarf', 'asset': 'wool scarf.png'},
+        {'name': 'Baseball Cap', 'asset': 'baseball cap.png'},
+    ],
+}
+
+
+@st.cache_data(show_spinner=False)
+def _load_guest_asset_bytes(file_name: str) -> bytes | None:
+    asset_path = GUEST_ASSET_DIR / file_name
+    if not asset_path.exists():
+        return None
+    return asset_path.read_bytes()
+
+
+def _default_catalog() -> dict[str, list[dict[str, object]]]:
+    catalog = {category: [] for category in GUEST_DEFAULT_ITEMS}
+    for category, items in GUEST_DEFAULT_ITEMS.items():
+        for item in items:
+            catalog[category].append(
+                {
+                    'name': item['name'],
+                    'image': _load_guest_asset_bytes(item['asset']),
+                    'color': None,
+                }
+            )
+    return catalog
+
+
+def _catalog_has_any_items(catalog: object) -> bool:
+    if not isinstance(catalog, dict):
+        return False
+    return any(bool(items) for items in catalog.values())
+
+
 # Defining functions to display weather and wardrobe widgets
 
 
 def _load_catalog_if_missing():
-    if 'catalog' not in st.session_state:
-        local = st.session_state.get('local_user')
-        if local:
+    local_email = st.session_state.get('local_user')
+    google_email = (
+        getattr(st.user, 'email', '') if getattr(st.user, 'is_logged_in', False) else ''
+    )
+    active_owner = local_email or google_email or None
+
+    if 'catalog_owner' not in st.session_state:
+        st.session_state.catalog_owner = None
+
+    guest_catalog_empty = active_owner is None and not _catalog_has_any_items(
+        st.session_state.get('catalog')
+    )
+
+    needs_refresh = (
+        'catalog' not in st.session_state
+        or st.session_state.catalog_owner != active_owner
+        or guest_catalog_empty
+    )
+
+    if needs_refresh:
+        if active_owner:
             try:
-                st.session_state.catalog = get_user_catalog(local)
+                st.session_state.catalog = get_user_catalog(active_owner)
             except Exception:
                 st.session_state.catalog = {}
         else:
-            st.session_state.catalog = {}
+            st.session_state.catalog = _default_catalog()
+
+        st.session_state.catalog_owner = active_owner
 
 
 def _is_stale_media_id(value: object) -> bool:
@@ -363,18 +437,14 @@ def _display_weather(location, bundle, error_message):
         st.metric('Temp (°C)', temp_text)
         st.caption(bundle.get('location', ''))
     with cols[1]:
-        st.markdown(
-            f'**{weather.get("main", "")}** — {weather.get("description", "")}'
-        )
+        st.markdown(f'**{weather.get("main", "")}** — {weather.get("description", "")}')
         st.write(f'**Humidity**: {main.get("humidity", "N/A")}%')
         st.write(f'**Wind**: {cur.get("wind", {}).get("speed", "N/A")} m/s')
 
 
 def _display_ai_stylist_panel():
     st.subheader('AI Stylist')
-    st.caption(
-        'Get an outfit recommendation using your current weather and wardrobe.'
-    )
+    st.caption('Get an outfit recommendation using your current weather and wardrobe.')
     if st.button(
         'Suggest Outfit with AI',
         key='dashboard_ai_stylist',
@@ -382,9 +452,7 @@ def _display_ai_stylist_panel():
         width='stretch',
         icon='✨',
     ):
-        overlay_slot, overlay_started_at = show_loading_overlay(
-            'Opening AI Stylist...'
-        )
+        overlay_slot, overlay_started_at = show_loading_overlay('Opening AI Stylist...')
         st.session_state.llm_prefill_prompt = (
             'Suggest an outfit based on my current weather and my wardrobe. '
             'Give one best outfit and one backup option.'
