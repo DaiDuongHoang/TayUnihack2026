@@ -72,22 +72,22 @@ def _add_item_to_catalog(name, cloth_type, image=None, color=None):
 
 
 def _description_emoji(description):
-    desc = str(description or "").lower()
-    if "thunder" in desc:
-        return "⛈️"
-    if "rain" in desc or "drizzle" in desc:
-        return "🌧️"
-    if "snow" in desc:
-        return "❄️"
-    if "mist" in desc or "fog" in desc or "haze" in desc:
-        return "🌫️"
-    if "overcast" in desc:
-        return "☁️"
-    if "cloud" in desc:
-        return "⛅"
-    if "clear" in desc:
-        return "☀️"
-    return "🌤️"
+    desc = str(description or '').lower()
+    if 'thunder' in desc:
+        return '⛈️'
+    if 'rain' in desc or 'drizzle' in desc:
+        return '🌧️'
+    if 'snow' in desc:
+        return '❄️'
+    if 'mist' in desc or 'fog' in desc or 'haze' in desc:
+        return '🌫️'
+    if 'overcast' in desc:
+        return '☁️'
+    if 'cloud' in desc:
+        return '⛅'
+    if 'clear' in desc:
+        return '☀️'
+    return '🌤️'
 
 
 # Defining functions to display weather and wardrobe widgets
@@ -129,6 +129,19 @@ def _display_wardrobe_preview():
     st.subheader('Wardrobe Preview')
     if not items:
         st.info('No wardrobe items available to preview.')
+        return
+
+    search_query = st.text_input(
+        'Search wardrobe',
+        key='dashboard_wardrobe_search',
+        placeholder='Filter by name…',
+        label_visibility='collapsed',
+    )
+    if search_query.strip():
+        q = search_query.strip().lower()
+        items = [it for it in items if q in it.get('name', '').lower()]
+    if not items:
+        st.info('No items match your search.')
         return
 
     per_row = 3
@@ -237,8 +250,8 @@ def _display_weather():
             location = None
     else:
         # guest or unauthenticated: use any saved session values if present
-        saved_country = st.session_state.get("saved_country", "")
-        saved_city = st.session_state.get("saved_city", "")
+        saved_country = st.session_state.get('saved_country', '')
+        saved_city = st.session_state.get('saved_city', '')
         if saved_city or saved_country:
             location = (saved_city, saved_country)
 
