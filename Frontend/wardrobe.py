@@ -587,26 +587,83 @@ if feedback_message:
 
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
-    if st.button(
-        'Add Item',
-        key='add_item_button',
-        type='primary',
-        width='stretch',
-        icon='➕',
-    ):
-        add_clothe_item()
+    top_left, top_right = st.columns([3, 1])
+    with top_left:
+        wardrobe_search = st.text_input(
+            'Search wardrobe',
+            key='wardrobe_grid_search',
+            placeholder='🔍 Search all items…',
+            label_visibility='collapsed',
+        )
+    with top_right:
+        if st.button(
+            'Add Item',
+            key='add_item_button',
+            type='primary',
+            width='stretch',
+            icon='➕',
+        ):
+            add_clothe_item()
 
-    row1 = st.columns(2, border=True)
-    row2 = st.columns(2, border=True)
-    grid = [row1[0], row1[1], row2[0], row2[1]]
+    if wardrobe_search.strip():
+        q = wardrobe_search.strip().lower()
+        matched = [
+            {
+                **(
+                    item
+                    if isinstance(item, dict)
+                    else {
+                        'name': item[0],
+                        'image': item[1],
+                        'color': None,
+                        'cloth_type': None,
+                    }
+                ),
+                '_category': cat,
+            }
+            for cat, entries in st.session_state.catalog.items()
+            for item in entries
+            if q
+            in (item.get('name', '') if isinstance(item, dict) else item[0]).lower()
+        ]
+        if not matched:
+            st.info('No items match your search.')
+        else:
+            num_cols = 3
+            for i in range(0, len(matched), num_cols):
+                cols = st.columns(num_cols, border=True)
+                for j, col in enumerate(cols):
+                    if i + j >= len(matched):
+                        break
+                    item = matched[i + j]
+                    with col:
+                        st.markdown(f'#### {item.get("name", "Unnamed")}')
+                        if item.get('cloth_type'):
+                            st.caption(item['cloth_type'])
+                        st.caption(f'📁 {item["_category"]}')
+                        img = item.get('image')
+                        color = item.get('color')
+                        if img:
+                            st.image(img, width='content')
+                        elif color:
+                            st.markdown(
+                                f"<div style='width:100%;height:140px;border-radius:0.75rem;background:{color};border:1px solid rgba(0,0,0,0.08);'></div>",
+                                unsafe_allow_html=True,
+                            )
+    else:
+        row1 = st.columns(2, border=True)
+        row2 = st.columns(2, border=True)
+        grid = [row1[0], row1[1], row2[0], row2[1]]
 
-    for i, category in enumerate(categories):
-        with grid[i]:
-            st.markdown(f'### {category}')
-            st.write(f'{len(st.session_state.catalog[category])} item(s)')
-            if st.button(f'Open {category}', key=f'cat_{category}', width='stretch'):
-                st.session_state.selected_category = category
-                st.rerun()
+        for i, category in enumerate(categories):
+            with grid[i]:
+                st.markdown(f'### {category}')
+                st.write(f'{len(st.session_state.catalog[category])} item(s)')
+                if st.button(
+                    f'Open {category}', key=f'cat_{category}', width='stretch'
+                ):
+                    st.session_state.selected_category = category
+                    st.rerun()
 
 # --- Clothing Grid ---
 else:
@@ -625,12 +682,33 @@ else:
     if not items:
         st.info('No items in this category yet. Use ➕ to add some!')
     else:
-        num_cols = 3
-        for i in range(0, len(items), num_cols):
-            cols = st.columns(num_cols, border=True)
-            for j, col in enumerate(cols):
-                if i + j < len(items):
-                    item = items[i + j]
+        cat_search = st.text_input(
+            'Search category',
+            key=f'wardrobe_cat_search_{st.session_state.selected_category}',
+            placeholder='🔍 Search in this category…',
+            label_visibility='collapsed',
+        )
+        if cat_search.strip():
+            q = cat_search.strip().lower()
+            display_items = [
+                (orig_idx, item)
+                for orig_idx, item in enumerate(items)
+                if q
+                in (item.get('name', '') if isinstance(item, dict) else item[0]).lower()
+            ]
+        else:
+            display_items = list(enumerate(items))
+
+        if not display_items:
+            st.info('No items match your search.')
+        else:
+            num_cols = 3
+            for row_start in range(0, len(display_items), num_cols):
+                cols = st.columns(num_cols, border=True)
+                for j, col in enumerate(cols):
+                    if row_start + j >= len(display_items):
+                        break
+                    item_index, item = display_items[row_start + j]
                     if isinstance(item, dict):
                         name = item.get('name', 'Unnamed Item')
                         image = item.get('image')
@@ -655,8 +733,6 @@ else:
                                 unsafe_allow_html=True,
                             )
                             st.caption(f'Color: {color}')
-
-                        item_index = i + j
 
                         if st.button(
                             'Edit',

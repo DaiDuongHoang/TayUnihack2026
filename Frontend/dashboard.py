@@ -72,22 +72,22 @@ def _add_item_to_catalog(name, cloth_type, image=None, color=None):
 
 
 def _description_emoji(description):
-    desc = str(description or "").lower()
-    if "thunder" in desc:
-        return "⛈️"
-    if "rain" in desc or "drizzle" in desc:
-        return "🌧️"
-    if "snow" in desc:
-        return "❄️"
-    if "mist" in desc or "fog" in desc or "haze" in desc:
-        return "🌫️"
-    if "overcast" in desc:
-        return "☁️"
-    if "cloud" in desc:
-        return "⛅"
-    if "clear" in desc:
-        return "☀️"
-    return "🌤️"
+    desc = str(description or '').lower()
+    if 'thunder' in desc:
+        return '⛈️'
+    if 'rain' in desc or 'drizzle' in desc:
+        return '🌧️'
+    if 'snow' in desc:
+        return '❄️'
+    if 'mist' in desc or 'fog' in desc or 'haze' in desc:
+        return '🌫️'
+    if 'overcast' in desc:
+        return '☁️'
+    if 'cloud' in desc:
+        return '⛅'
+    if 'clear' in desc:
+        return '☀️'
+    return '🌤️'
 
 
 # Defining functions to display weather and wardrobe widgets
@@ -131,6 +131,19 @@ def _display_wardrobe_preview():
         st.info('No wardrobe items available to preview.')
         return
 
+    search_query = st.text_input(
+        'Search wardrobe',
+        key='dashboard_wardrobe_search',
+        placeholder='Filter by name…',
+        label_visibility='collapsed',
+    )
+    if search_query.strip():
+        q = search_query.strip().lower()
+        items = [it for it in items if q in it.get('name', '').lower()]
+    if not items:
+        st.info('No items match your search.')
+        return
+
     per_row = 3
     for i in range(0, len(items), per_row):
         cols = st.columns(per_row, gap='small')
@@ -145,27 +158,82 @@ def _display_wardrobe_preview():
                 color = item.get('color')
                 category = item.get('category')
 
-                # prepare image or color block as HTML
+                # prepare image or color block as HTML, wrapped in a uniform container
                 img_html = ''
                 if img:
                     try:
                         if isinstance(img, (bytes, bytearray)):
                             b64 = base64.b64encode(img).decode('utf-8')
-                            img_html = f'<img src="data:image/png;base64,{b64}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;"/>'
+                            img_html = f'<img class="wardrobe-img-el" src="data:image/png;base64,{b64}" style="width:100%;object-fit:cover;border-radius:8px;"/>'
                         else:
-                            img_html = f'<img src="{img}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;"/>'
+                            img_html = f'<img class="wardrobe-img-el" src="{img}" style="width:100%;object-fit:cover;border-radius:8px;"/>'
                     except Exception:
-                        img_html = '<div style="width:100%;height:140px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:8px;">(image)</div>'
+                        img_html = '<div class="wardrobe-img-placeholder" style="width:100%;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:8px;">(image)</div>'
                 elif color:
-                    img_html = f'<div style="width:100%;height:140px;border-radius:8px;background:{color};border:1px solid rgba(0,0,0,0.06);"></div>'
+                    img_html = f'<div class="wardrobe-img-color" style="width:100%;border-radius:8px;background:{color};border:1px solid rgba(0,0,0,0.06);"></div>'
 
-                card_html = f"""<div style="border-radius:12px;padding:10px;border:1px solid rgba(0,0,0,0.06);box-shadow:0 6px 18px rgba(0,0,0,0.06);">\
-                    <div style=\"font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">{name}</div>\
-                    {img_html}\
-                    <div style=\"margin-top:8px;color:#6b7280;font-size:0.9rem;\">{category}</div>\
-                </div>"""
+                # card layout: image is inside a container `wardrobe-img` so we can set a uniform height later
+                card_html = f"""
+                <div style="border-radius:12px;padding:10px;border:1px solid rgba(0,0,0,0.06);box-shadow:0 6px 18px rgba(0,0,0,0.06);">
+                    <div style=\"font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">{name}</div>
+                    <div class="wardrobe-img" style="width:100%;height:auto;overflow:hidden;border-radius:8px;">
+                        {img_html}
+                    </div>
+                    <div style=\"margin-top:8px;color:#6b7280;font-size:0.9rem;\">{category}</div>
+                </div>
+                """
 
                 st.markdown(card_html, unsafe_allow_html=True)
+
+        # After rendering all cards, inject JS to measure image natural sizes and set a uniform height
+        sizing_script = """
+        <script>
+        (function(){
+            try{
+                const imgs = Array.from(document.querySelectorAll('.wardrobe-img-el'));
+                const containers = Array.from(document.querySelectorAll('.wardrobe-img'));
+                if(!containers.length) return;
+
+                let pending = imgs.length || 1;
+                let maxH = 0;
+
+                function finalize(){
+                    if(maxH <= 0) return;
+                    containers.forEach(c => { c.style.height = maxH + 'px'; });
+                }
+
+                function consider(img){
+                    try{
+                        const rectW = img.clientWidth || img.naturalWidth || 0;
+                        const natW = img.naturalWidth || rectW;
+                        const natH = img.naturalHeight || rectW;
+                        const displayH = natW ? Math.round(natH * (rectW / natW)) : img.clientHeight || 0;
+                        if(displayH > maxH) maxH = displayH;
+                    }catch(e){}
+                }
+
+                imgs.forEach(img => {
+                    if(img.complete && img.naturalWidth){
+                        consider(img);
+                        pending--;
+                        if(pending === 0) finalize();
+                    } else {
+                        img.addEventListener('load', function(){ consider(img); pending--; if(pending===0) finalize(); });
+                        img.addEventListener('error', function(){ pending--; if(pending===0) finalize(); });
+                    }
+                });
+
+                // in case there are no img elements, still set containers to a sensible default
+                if(imgs.length === 0){
+                    const defaultH = 180;
+                    containers.forEach(c => c.style.height = defaultH + 'px');
+                }
+            }catch(e){console.error(e);}
+        })();
+        </script>
+        """
+
+        st.markdown(sizing_script, unsafe_allow_html=True)
 
 
 def _display_weather():
@@ -182,8 +250,8 @@ def _display_weather():
             location = None
     else:
         # guest or unauthenticated: use any saved session values if present
-        saved_country = st.session_state.get("saved_country", "")
-        saved_city = st.session_state.get("saved_city", "")
+        saved_country = st.session_state.get('saved_country', '')
+        saved_city = st.session_state.get('saved_city', '')
         if saved_city or saved_country:
             location = (saved_city, saved_country)
 
