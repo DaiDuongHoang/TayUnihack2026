@@ -444,3 +444,21 @@ if __name__ == '__main__':
         with rightcol:
             with st.container(border=True):
                 _display_weather()
+
+            with st.container(border=True):
+                st.subheader('AI Stylist')
+                st.caption(
+                    'Get an outfit recommendation using your current weather and wardrobe.'
+                )
+                if st.button(
+                    'Suggest Outfit with AI',
+                    key='dashboard_ai_stylist',
+                    type='primary',
+                    width='stretch',
+                    icon='✨',
+                ):
+                    st.session_state.llm_prefill_prompt = (
+                        'Suggest an outfit based on my current weather and my wardrobe. '
+                        'Give one best outfit and one backup option.'
+                    )
+                    st.switch_page('LLM.py')
