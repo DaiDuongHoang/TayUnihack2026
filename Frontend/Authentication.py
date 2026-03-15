@@ -12,14 +12,22 @@ def load_backend_functions():
     try:
         module = importlib.import_module(BACKEND_MODULE)
     except ModuleNotFoundError:
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     register_fn = getattr(module, 'register_user', None)
     verify_fn = getattr(module, 'verify_user', None)
     authenticate_fn = getattr(module, 'authenticate_user', None)
     google_sync_fn = getattr(module, 'sync_google_user', None)
     reset_fn = getattr(module, 'reset_password', None)
-    return register_fn, verify_fn, authenticate_fn, google_sync_fn, reset_fn
+    change_pw_fn = getattr(module, 'change_password', None)
+    return (
+        register_fn,
+        verify_fn,
+        authenticate_fn,
+        google_sync_fn,
+        reset_fn,
+        change_pw_fn,
+    )
 
 
 (
@@ -28,6 +36,7 @@ def load_backend_functions():
     backend_authenticate_user,
     backend_sync_google_user,
     backend_reset_password,
+    backend_change_password,
 ) = load_backend_functions()
 
 
@@ -35,6 +44,14 @@ def reset_user_password(email: str, new_password: str) -> tuple[bool, str]:
     if backend_reset_password is None:
         return False, 'Password reset is not available. Backend not connected.'
     return backend_reset_password(email.strip(), new_password)
+
+
+def change_user_password(
+    email: str, current_password: str, new_password: str
+) -> tuple[bool, str]:
+    if backend_change_password is None:
+        return False, 'Password change is not available. Backend not connected.'
+    return backend_change_password(email.strip(), current_password, new_password)
 
 
 def register_user(first_name: str, email: str, password: str) -> tuple[bool, str]:
@@ -303,6 +320,9 @@ def login_screen(
                 fp_email = st.text_input(
                     'Email', placeholder='Enter your account email', key='fp_email'
                 )
+                fp_current_password = st.text_input(
+                    'Current password', type='password', key='fp_current_pw'
+                )
                 fp_new_password = st.text_input(
                     'New password', type='password', key='fp_new_pw'
                 )
@@ -313,11 +333,13 @@ def login_screen(
                     'Reset Password', use_container_width=True
                 )
             if fp_submitted:
-                if fp_new_password != fp_confirm_password:
+                if not fp_current_password:
+                    st.error('Please enter your current password.')
+                elif fp_new_password != fp_confirm_password:
                     st.error('Passwords do not match.')
                 else:
-                    fp_success, fp_message = reset_user_password(
-                        fp_email, fp_new_password
+                    fp_success, fp_message = change_user_password(
+                        fp_email, fp_current_password, fp_new_password
                     )
                     if fp_success:
                         st.success(fp_message)

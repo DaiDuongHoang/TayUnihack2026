@@ -160,12 +160,13 @@ def _display_weather():
             location = None
 
     if not location:
-        # let user enter a location if not found
-        city = st.text_input("Enter city for weather", value="")
-        country = st.text_input("Country (optional)", value="")
-        if city:
-            location = (city, country)
-
+        # If no saved location, show a button that takes the user to the Location page
+        if st.button("Set location", use_container_width=True, key="go_to_location", type='primary'):
+            st.switch_page("location.py")
+            try:
+                st.experimental_set_query_params(page="Location")
+            except Exception:
+                pass
     if location:
         try:
             bundle = fetch_weather_bundle(location[0], location[1])
@@ -199,7 +200,7 @@ def _display_weather():
         except Exception as e:
             st.warning(f"Unable to fetch weather: {e}")
     else:
-        st.info("No location provided for weather.")
+        st.info("No location provided. Click 'Set location' to open the Location page.")
 
 # CSS animations
 st.html("""
@@ -226,11 +227,6 @@ div[data-testid="stButton"] button {
 div[data-testid="stColumn"] {
     animation: slideFadeDown 0.4s ease forwards;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-div[data-testid="stColumn"]:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Apply to horizontal divider */
