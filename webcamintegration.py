@@ -48,7 +48,89 @@ css = """
         transform: translateY(0);     /* settles back to natural position */
     }
 }
+
+.webcam-title {
+    margin: 0;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+
+div[data-testid="stButton"] button {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+div[data-testid="stButton"] button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0px 10px 22px rgba(0, 0, 0, 0.28);
+}
+
+div[data-testid="stColumn"] {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+
+div[data-testid="stDivider"] {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
+}
+
+div[data-testid="stAlert"] {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+
+div[data-testid="stButton"]:nth-child(1) button { animation-delay: 0.0s; }
+div[data-testid="stButton"]:nth-child(2) button { animation-delay: 0.1s; }
+div[data-testid="stButton"]:nth-child(3) button { animation-delay: 0.2s; }
+div[data-testid="stButton"]:nth-child(4) button { animation-delay: 0.3s; }
 </style>
+<script>
+(() => {
+    const controlFont = "'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif";
+
+    const applyToDoc = (doc) => {
+        if (!doc) {
+            return;
+        }
+
+        let styleTag = doc.getElementById('taylr-webrtc-font-style');
+        if (!styleTag) {
+            styleTag = doc.createElement('style');
+            styleTag.id = 'taylr-webrtc-font-style';
+            styleTag.textContent = `
+                button,
+                select,
+                option,
+                label {
+                    font-family: ${controlFont} !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.01em !important;
+                }
+            `;
+            doc.head.appendChild(styleTag);
+        }
+    };
+
+    const tryApply = () => {
+        const frames = Array.from(document.querySelectorAll('iframe'));
+        for (const frame of frames) {
+            const fingerprint = `${frame.title || ''} ${frame.id || ''} ${frame.src || ''}`.toLowerCase();
+            if (!/(webrtc|streamlit|component)/.test(fingerprint)) {
+                continue;
+            }
+
+            try {
+                const frameDoc = frame.contentDocument || frame.contentWindow?.document;
+                applyToDoc(frameDoc);
+            } catch (_) {
+                // Best-effort only; cross-origin/sandboxed frames may block access.
+            }
+        }
+    };
+
+    tryApply();
+    const observer = new MutationObserver(tryApply);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setInterval(tryApply, 1200);
+})();
+</script>
 """
 st.html(css)
 
@@ -105,16 +187,18 @@ if 'webcam_instance' not in st.session_state:
 # ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
-st.title('📷 Webcam Stream')
+st.markdown('<h1 class="webcam-title">📷 Webcam Stream</h1>', unsafe_allow_html=True)
 
 if webrtc_streamer is None or av is None:
     st.error('streamlit-webrtc is not installed. Run: pip install streamlit-webrtc av')
     st.stop()
 
-st.markdown('### 🎥 Live Feed')
+st.divider()
+
 left_col, right_col = st.columns([2, 1])
 
 with left_col:
+    st.markdown('### 🎥 Live Feed')
     webrtc_ctx = webrtc_streamer(
         key=f'stable-webcam-{st.session_state.webcam_instance}',
         mode=WebRtcMode.SENDRECV,
@@ -147,7 +231,7 @@ with right_col:
         st.toast('Camera restarted.')
         st.rerun()
 
-    if st.button('📸 Capture Frame'):
+    if st.button('📸 Capture Frame', width='stretch'):
         frame = None
         if webrtc_ctx.video_processor:
             frame = webrtc_ctx.video_processor.get_latest_frame()

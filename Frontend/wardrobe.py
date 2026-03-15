@@ -60,38 +60,61 @@ if not is_authenticated():
 # CSS animations
 st.html("""
 <style>
-/* Slide-fade-DOWN keyframe */
-@keyframes slideFadeDown {
-    from {
+/* Shared settle animation used across pages */
+@keyframes fadeSlideDownSettle {
+    0% {
         opacity: 0;
         transform: translateY(-20px);
     }
-    to {
+    60% {
+        opacity: 1;
+        transform: translateY(4px);
+    }
+    100% {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
-/* Apply to all buttons */
+.wardrobe-title {
+    margin: 0;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+
+/* Buttons */
 div[data-testid="stButton"] button {
-    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Apply to bordered column/grid boxes */
+/* Grid columns */
 div[data-testid="stColumn"] {
-    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
 div[data-testid="stColumn"]:hover {
-    transform: translateY(-10px) scale(1.01);
-    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.20);
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.16);
 }
 
-/* Apply to horizontal divider */
+/* Divider */
 div[data-testid="stDivider"] {
-    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
+}
+
+/* Inputs and forms */
+div[data-testid="stTextInput"],
+div[data-testid="stSelectbox"],
+div[data-testid="stFileUploader"],
+div[data-testid="stColorPicker"],
+div[data-testid="stForm"] {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+
+/* Markdown/text blocks */
+div[data-testid="stMarkdownContainer"] {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
 }
 
 /* Stagger for buttons */
@@ -106,77 +129,26 @@ div[data-testid="stColumn"]:nth-child(2) { animation-delay: 0.1s; }
 div[data-testid="stColumn"]:nth-child(3) { animation-delay: 0.2s; }
 div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
 
-/* Keep hover effect on buttons */
+/* Button hover */
 div[data-testid="stButton"] button:hover {
-    transform: translateY(-5px) scale(1.11);
-    box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
-}
-
-/* Dedicated animation for the Go Back button */
-@keyframes backButtonFloat {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-7px);
-    }
-}
-
-@keyframes backButtonWiggle {
-    0% {
-        transform: translateX(-6px) scale(1.09) rotate(0deg);
-    }
-    25% {
-        transform: translateX(-10px) scale(1.11) rotate(-2deg);
-    }
-    50% {
-        transform: translateX(-6px) scale(1.12) rotate(2deg);
-    }
-    75% {
-        transform: translateX(-10px) scale(1.11) rotate(-1deg);
-    }
-    100% {
-        transform: translateX(-6px) scale(1.09) rotate(0deg);
-    }
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0px 12px 24px rgba(0, 0, 0, 0.22);
 }
 
 .st-key-back_button button {
-    animation: backButtonFloat 1.8s ease-in-out infinite;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.1s both;
     border: 1px solid rgba(59, 130, 246, 0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .st-key-back_button button:hover {
-    animation: backButtonWiggle 0.45s ease-in-out infinite;
-    box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55);
-    filter: brightness(1.14) saturate(1.2);
-}
-
-/* Apply slideFadeDown animation to st.success (alert elements) */
-/* Delete button — danger pulse idle + shake on hover */
-@keyframes deleteDangerPulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0);
-        border-color: rgba(239, 68, 68, 0.28);
-    }
-    50% {
-        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0.18);
-        border-color: rgba(239, 68, 68, 0.65);
-    }
-}
-
-@keyframes deleteShake {
-    0%   { transform: translateX(0) scale(1.04); }
-    25%  { transform: translateX(-2px) scale(1.05); }
-    50%  { transform: translateX(2px) scale(1.06); }
-    75%  { transform: translateX(-1px) scale(1.05); }
-    100% { transform: translateX(0) scale(1.04); }
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.38);
+    filter: brightness(1.06) saturate(1.08);
 }
 
 [class*="st-key-del"] button {
-    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-               deleteDangerPulse 2.0s ease-in-out 0.7s infinite !important;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     border: 1.5px solid rgba(239, 68, 68, 0.32) !important;
     color: #dc2626 !important;
     transition: transform 0.18s ease, box-shadow 0.18s ease,
@@ -184,22 +156,29 @@ div[data-testid="stButton"] button:hover {
 }
 
 [class*="st-key-del"] button:hover {
-    animation: deleteShake 0.42s ease-in-out infinite !important;
-    box-shadow: 0 14px 34px rgba(239, 68, 68, 0.55) !important;
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.4) !important;
     background: rgba(254, 226, 226, 0.88) !important;
     border-color: rgba(239, 68, 68, 0.75) !important;
     color: #b91c1c !important;
 }
 
-/* Apply slideFadeDown animation to st.success (alert elements) */
+/* Alerts */
 div[data-testid="stAlert"] {
-    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 div[data-testid="stAlert"]:hover {
     transform: translateY(-6px);
     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.14);
+}
+
+/* Sidebar should remain static (no animations) */
+section[data-testid="stSidebar"] * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
 }
 
 </style>
@@ -624,7 +603,7 @@ categories = list(st.session_state.catalog.keys())
 
 
 # --- Top bar: Title + Action Buttons ---
-st.title('👗 My Wardrobe')
+st.markdown('<h1 class="wardrobe-title">👗 My Wardrobe</h1>', unsafe_allow_html=True)
 st.divider()
 
 feedback_message = st.session_state.pop('wardrobe_feedback', None)
