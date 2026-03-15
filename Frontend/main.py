@@ -40,7 +40,7 @@ pages = {
         st.Page('weather.py', title='Weather', icon='🌦️'),
         st.Page('location.py', title='Location', icon='🎈'),
         st.Page('LLM.py', title='AI Stylist', icon='✨'),
-        st.Page('../webcamintegration.py', title='Webcam', icon='📷'),
+        st.Page('../webcamintegration.py', title='AI Webcam', icon='📷'),
     ],
     'Account': [
         st.Page('user_profile.py', title='Profile', icon='👤'),
