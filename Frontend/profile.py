@@ -111,12 +111,16 @@ guest = is_guest()
 
 st.title('👤 Profile')
 
+pending_toast = st.session_state.pop('profile_toast_message', None)
+if pending_toast:
+    st.toast(pending_toast)
+
 # --- Guest view ---
 if guest:
     st.info(
         'You are browsing as a guest. Create an account to save your wardrobe and preferences.'
     )
-    if st.button('Log out (Guest)', type='primary', use_container_width=True):
+    if st.button('Log out (Guest)', type='primary', width='stretch'):
         st.session_state.is_guest = False
         st.session_state.local_user_name = None
         st.rerun()
@@ -163,7 +167,7 @@ if provider == 'Local':
     st.subheader('Edit Profile')
     with st.form('update_name_form'):
         new_name = st.text_input('Display name', value=display_name)
-        save_name = st.form_submit_button('Save', use_container_width=True)
+        save_name = st.form_submit_button('Save', width='stretch')
 
     if save_name:
         if not new_name.strip():
@@ -172,7 +176,9 @@ if provider == 'Local':
             ok, msg = auth_backend.update_user_name(display_email, new_name.strip())
             if ok:
                 st.session_state.local_user_name = new_name.strip()
-                st.success(msg)
+                st.session_state.profile_toast_message = (
+                    f'Display name updated to {new_name.strip()}! ✅'
+                )
                 st.rerun()
             else:
                 st.error(msg)
@@ -183,7 +189,7 @@ if provider == 'Local':
         old_pw = st.text_input('Current password', type='password')
         new_pw = st.text_input('New password', type='password')
         confirm_pw = st.text_input('Confirm new password', type='password')
-        change_pw = st.form_submit_button('Update password', use_container_width=True)
+        change_pw = st.form_submit_button('Update password', width='stretch')
 
     if change_pw:
         if not old_pw:
@@ -208,11 +214,11 @@ if google_logged_in:
     st.button(
         'Log out (Google)',
         on_click=st.logout,
-        use_container_width=True,
+        width='stretch',
         type='primary',
     )
 elif local_user:
-    if st.button('Log out', use_container_width=True, type='primary'):
+    if st.button('Log out', width='stretch', type='primary'):
         st.session_state.local_user = None
         st.session_state.local_user_name = None
         st.session_state.is_guest = False

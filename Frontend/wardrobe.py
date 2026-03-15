@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from pathlib import Path
 from Authentication import is_authenticated, login_screen
 from data_backend import (
@@ -237,6 +238,11 @@ GUEST_DEFAULT_ITEMS = {
             'asset': 'joggers.png',
             'cloth_type': '👖 Pants',
         },
+        {
+            'name': 'Jeans',
+            'asset': 'jeans.png',
+            'cloth_type': '👖 Jeans',
+        },
     ],
     'Outerwear 🧥': [
         {
@@ -363,7 +369,7 @@ def _edit_wardrobe_item(category, item_index, local_user):
             )
 
         submitted = st.form_submit_button(
-            'Save changes', type='primary', use_container_width=True
+            'Save changes', type='primary', width='stretch'
         )
 
     if not submitted:
@@ -397,7 +403,7 @@ def _edit_wardrobe_item(category, item_index, local_user):
         },
         new_category=edited_category,
     )
-    st.session_state.wardrobe_feedback = f'Updated {clean_name}.'
+    st.toast(f'Updated {clean_name}. ✅')
     st.rerun()
 
 
@@ -413,7 +419,7 @@ def add_clothe_item():
         'Upload image(s) of the clothe item',
         type=['jpg', 'jpeg', 'png', 'bmp'],
         help='Supported formats: JPG, JPEG, PNG, BMP. Max file size: 10MB.',
-        accept_multiple_files=True,
+        accept_multiple_files=False,
     )
 
     has_uploaded_files = bool(uploaded_files)
@@ -421,9 +427,40 @@ def add_clothe_item():
     manual_color = None
 
     if has_uploaded_files:
-        for file in uploaded_files:
-            st.image(file, caption=file.name)
-        st.success(f'Successfully uploaded {len(uploaded_files)} file(s)!')
+        try:
+            from ultralytics import YOLO
+        except ModuleNotFoundError:
+            st.error(
+                'Image auto-detection is unavailable because ultralytics is not installed.'
+            )
+            st.info('Please remove the upload and enter details manually for now.')
+            return
+
+        current_path = os.path.dirname(__file__)
+        parent_path = os.path.dirname(current_path)
+        color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
+        category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
+
+        if not os.path.exists(color_cls_path) or not os.path.exists(category_cls_path):
+            st.error('Model files are missing. Please check the models folder.')
+            return
+
+        color_model = YOLO(str(color_cls_path))
+        category_model = YOLO(str(category_cls_path))
+
+        file = uploaded_files
+        st.image(file, caption=file.name)
+        pred = color_model.predict(source=file)
+        clothe_color = pred[0]
+        top_1_idx = int(clothe_color.probs.top1)
+        manual_color = color_model.names[top_1_idx]
+
+        pred = category_model.predict(source=file)
+        clothe_category = pred[0]
+        top_1_idx = int(clothe_category.probs.top1)
+        selected_cloth_type = category_model.names[top_1_idx]
+
+        st.success('Successfully uploaded 1 file!')
     else:
         st.info('Upload an image, or enter the clothe details manually to continue.')
 
@@ -448,35 +485,28 @@ def add_clothe_item():
     upload_entry_ready = has_uploaded_files and bool(clean_item_name)
 
     if upload_entry_ready or manual_entry_ready:
-        if st.button('Submit', type='primary', use_container_width=True):
+        if st.button('Submit', type='primary', width='stretch'):
             local_email = st.session_state.get('local_user')
 
             if has_uploaded_files:
-                category = None
-                for index, file in enumerate(uploaded_files, start=1):
-                    uploaded_item_name = clean_item_name
-                    if len(uploaded_files) > 1:
-                        uploaded_item_name = f'{clean_item_name} {index}'
+                file = uploaded_files
+                image_data = file.getvalue()
+                item_id = None
 
-                    image_data = file.getvalue()
-                    item_id = None
-
-                    if local_email:
-                        item_id = add_clothing_item(
-                            email=local_email,
-                            item_name=uploaded_item_name,
-                            image_data=image_data,
-                        )
-
-                    category = _add_item_to_catalog(
-                        name=uploaded_item_name,
-                        cloth_type=None,
-                        image=image_data,
-                        item_id=item_id,
+                if local_email:
+                    item_id = add_clothing_item(
+                        email=local_email,
+                        item_name=clean_item_name,
+                        image_data=image_data,
                     )
-                st.session_state.wardrobe_feedback = (
-                    f'**Added {len(uploaded_files)} item(s) to {category}.**'
+
+                category = _add_item_to_catalog(
+                    name=clean_item_name,
+                    cloth_type=selected_cloth_type,
+                    image=image_data,
+                    item_id=item_id,
                 )
+                st.session_state.wardrobe_feedback = f'**Added 1 item to {category}.**'
             else:
                 item_id = None
                 if local_email:
@@ -515,12 +545,24 @@ def _default_catalog():
     return catalog
 
 
+def _catalog_has_any_items(catalog: dict) -> bool:
+    if not isinstance(catalog, dict):
+        return False
+    return any(bool(items) for items in catalog.values())
+
+
 # !!! Clothes catalogue !!!
 local_user = st.session_state.get('local_user')
 if 'catalog_owner' not in st.session_state:
     st.session_state.catalog_owner = None
 
-if 'catalog' not in st.session_state or st.session_state.catalog_owner != local_user:
+catalog_missing = 'catalog' not in st.session_state
+owner_changed = st.session_state.catalog_owner != local_user
+guest_catalog_empty = local_user is None and (
+    catalog_missing or not _catalog_has_any_items(st.session_state.get('catalog'))
+)
+
+if catalog_missing or owner_changed or guest_catalog_empty:
     if local_user:
         st.session_state.catalog = get_user_catalog(local_user)
     else:
@@ -549,7 +591,7 @@ if st.session_state.selected_category is None:
         'Add Item',
         key='add_item_button',
         type='primary',
-        use_container_width=True,
+        width='stretch',
         icon='➕',
     ):
         add_clothe_item()
@@ -562,9 +604,7 @@ if st.session_state.selected_category is None:
         with grid[i]:
             st.markdown(f'### {category}')
             st.write(f'{len(st.session_state.catalog[category])} item(s)')
-            if st.button(
-                f'Open {category}', key=f'cat_{category}', use_container_width=True
-            ):
+            if st.button(f'Open {category}', key=f'cat_{category}', width='stretch'):
                 st.session_state.selected_category = category
                 st.rerun()
 
@@ -622,7 +662,7 @@ else:
                             'Edit',
                             key=f'edit_{st.session_state.selected_category}_{item_index}',
                             type='secondary',
-                            use_container_width=True,
+                            width='stretch',
                         ):
                             _edit_wardrobe_item(
                                 st.session_state.selected_category,
@@ -673,6 +713,6 @@ else:
                                 key=f'{delete_key}_fallback',
                                 type='secondary',
                                 icon='🗑️',
-                                use_container_width=True,
+                                width='stretch',
                             ):
                                 _delete_item()

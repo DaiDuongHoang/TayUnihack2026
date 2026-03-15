@@ -12,14 +12,22 @@ def load_backend_functions():
     try:
         module = importlib.import_module(BACKEND_MODULE)
     except ModuleNotFoundError:
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     register_fn = getattr(module, 'register_user', None)
     verify_fn = getattr(module, 'verify_user', None)
     authenticate_fn = getattr(module, 'authenticate_user', None)
     google_sync_fn = getattr(module, 'sync_google_user', None)
     reset_fn = getattr(module, 'reset_password', None)
-    return register_fn, verify_fn, authenticate_fn, google_sync_fn, reset_fn
+    change_pw_fn = getattr(module, 'change_password', None)
+    return (
+        register_fn,
+        verify_fn,
+        authenticate_fn,
+        google_sync_fn,
+        reset_fn,
+        change_pw_fn,
+    )
 
 
 (
@@ -28,6 +36,7 @@ def load_backend_functions():
     backend_authenticate_user,
     backend_sync_google_user,
     backend_reset_password,
+    backend_change_password,
 ) = load_backend_functions()
 
 
@@ -35,6 +44,14 @@ def reset_user_password(email: str, new_password: str) -> tuple[bool, str]:
     if backend_reset_password is None:
         return False, 'Password reset is not available. Backend not connected.'
     return backend_reset_password(email.strip(), new_password)
+
+
+def change_user_password(
+    email: str, current_password: str, new_password: str
+) -> tuple[bool, str]:
+    if backend_change_password is None:
+        return False, 'Password change is not available. Backend not connected.'
+    return backend_change_password(email.strip(), current_password, new_password)
 
 
 def register_user(first_name: str, email: str, password: str) -> tuple[bool, str]:
@@ -282,7 +299,7 @@ def login_screen(
             password = st.text_input('Password', type='password')
             submitted = st.form_submit_button(
                 'Log in',
-                use_container_width=True,
+                width='stretch',
                 type='primary',
                 key='local_login_submit',
             )
@@ -303,6 +320,9 @@ def login_screen(
                 fp_email = st.text_input(
                     'Email', placeholder='Enter your account email', key='fp_email'
                 )
+                fp_current_password = st.text_input(
+                    'Current password', type='password', key='fp_current_pw'
+                )
                 fp_new_password = st.text_input(
                     'New password', type='password', key='fp_new_pw'
                 )
@@ -310,14 +330,16 @@ def login_screen(
                     'Confirm new password', type='password', key='fp_confirm_pw'
                 )
                 fp_submitted = st.form_submit_button(
-                    'Reset Password', use_container_width=True
+                    'Reset Password', width='stretch'
                 )
             if fp_submitted:
-                if fp_new_password != fp_confirm_password:
+                if not fp_current_password:
+                    st.error('Please enter your current password.')
+                elif fp_new_password != fp_confirm_password:
                     st.error('Passwords do not match.')
                 else:
-                    fp_success, fp_message = reset_user_password(
-                        fp_email, fp_new_password
+                    fp_success, fp_message = change_user_password(
+                        fp_email, fp_current_password, fp_new_password
                     )
                     if fp_success:
                         st.success(fp_message)
@@ -328,7 +350,7 @@ def login_screen(
         st.button(
             'Log in with Google',
             on_click=st.login,
-            use_container_width=True,
+            width='stretch',
             key='google_login_button',
         )
         st.caption(
@@ -339,7 +361,7 @@ def login_screen(
         st.caption('No account? Browse without saving your data.')
         if st.button(
             'Continue as Guest',
-            use_container_width=True,
+            width='stretch',
             key='guest_login_button',
         ):
             _set_guest_session()
@@ -359,7 +381,7 @@ def login_screen(
             confirm_password = st.text_input('Confirm password', type='password')
             submitted = st.form_submit_button(
                 'Create account',
-                use_container_width=True,
+                width='stretch',
                 type='primary',
                 key='local_register_submit',
             )
@@ -386,7 +408,7 @@ def login_screen(
         st.button(
             'Sign up with Google',
             on_click=st.login,
-            use_container_width=True,
+            width='stretch',
             key='google_register_button',
         )
         st.caption(
@@ -405,7 +427,7 @@ def authenticated_view() -> None:
         st.info(
             'You are browsing as a guest. Any changes you make will not be saved after this session.'
         )
-        if st.button('Log out (Guest)', use_container_width=True):
+        if st.button('Log out (Guest)', width='stretch'):
             st.session_state.is_guest = False
             st.session_state.local_user_name = None
             st.rerun()
@@ -433,10 +455,10 @@ def authenticated_view() -> None:
     col1, col2 = st.columns(2)
     with col1:
         if google_logged_in:
-            st.button('Log out (Google)', on_click=st.logout, use_container_width=True)
+            st.button('Log out (Google)', on_click=st.logout, width='stretch')
     with col2:
         if local_user:
-            if st.button('Log out (Local)', use_container_width=True):
+            if st.button('Log out (Local)', width='stretch'):
                 st.session_state.local_user = None
                 st.session_state.local_user_name = None
                 st.rerun()
