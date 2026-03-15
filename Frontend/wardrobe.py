@@ -1,4 +1,6 @@
 import streamlit as st
+import os
+from ultralytics import YOLO
 from pathlib import Path
 from Authentication import is_authenticated, login_screen
 from data_backend import (
@@ -418,16 +420,33 @@ def add_clothe_item():
         'Upload image(s) of the clothe item',
         type=['jpg', 'jpeg', 'png', 'bmp'],
         help='Supported formats: JPG, JPEG, PNG, BMP. Max file size: 10MB.',
-        accept_multiple_files=True,
+        accept_multiple_files=False,
     )
 
     has_uploaded_files = bool(uploaded_files)
     selected_cloth_type = None
     manual_color = None
 
+    current_path = os.path.dirname(__file__)
+    parent_path = os.path.dirname(current_path)
+    color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
+    color_model = YOLO(str(color_cls_path))
+    category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
+    category_model = YOLO(str(category_cls_path))
+
     if has_uploaded_files:
         for file in uploaded_files:
             st.image(file, caption=file.name)
+            pred = color_model.predict(source=file)
+            clothe_color = pred[0]
+            top_1_idx = int(clothe_color.probs.top1)
+            manual_color = color_model.names[top_1_idx]
+
+            pred = category_model.predict(source=file)
+            clothe_category = pred[0]
+            top_1_idx = int(clothe_category.probs.top1)
+            selected_cloth_type = category_model.names[top_1_idx]
+
         st.success(f'Successfully uploaded {len(uploaded_files)} file(s)!')
     else:
         st.info('Upload an image, or enter the clothe details manually to continue.')
@@ -475,7 +494,7 @@ def add_clothe_item():
 
                     category = _add_item_to_catalog(
                         name=uploaded_item_name,
-                        cloth_type=None,
+                        cloth_type=selected_cloth_type,
                         image=image_data,
                         item_id=item_id,
                     )
