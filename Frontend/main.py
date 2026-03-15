@@ -31,13 +31,11 @@ if LOGO_BIG is not None:
         else:
             st.logo(image=str(LOGO_BIG), size='large')
     else:
-        st.sidebar.image(
-            str(LOGO_BIG), width='stretch'
-        )  # RUN THIS IN STREAMLIT FIRST
+        st.sidebar.image(str(LOGO_BIG), width='stretch')  # RUN THIS IN STREAMLIT FIRST
 
 pages = {
     'Home': [
-        st.Page('dashboard.py', title='Dashboard', icon='🏡'),
+        st.Page('dashboard.py', title='Dashboard', icon='🏡', default=True),
         st.Page('wardrobe.py', title='Wardrobe', icon='👗'),
         st.Page('weather.py', title='Weather', icon='🌦️'),
         st.Page('location.py', title='Location', icon='🎈'),
@@ -52,9 +50,9 @@ st.set_page_config(
     page_icon='👗',
     layout='centered',
     menu_items={
-        "Get Help": "mailto:dhoa0014@student.monash.edu",
-        "Report a bug": "mailto:mvan0078@student.monash.edu",
-        "About": "## Wardrobe Assistant App\n Taylr is a personal wardrobe assistant that helps you manage your clothing items, plan outfits, and get weather-based recommendations. ",
+        'Get Help': 'mailto:dhoa0014@student.monash.edu',
+        'Report a bug': 'mailto:mvan0078@student.monash.edu',
+        'About': '## Wardrobe Assistant App\n Taylr is a personal wardrobe assistant that helps you manage your clothing items, plan outfits, and get weather-based recommendations. ',
     },
 )
 pg = st.navigation(pages)
