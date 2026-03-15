@@ -215,7 +215,7 @@ def _weather_appropriate_items(
 def get_clothing_suggestion(
     user_input: str, wardrobe_items: list[dict[str, str]]
 ) -> str:
-    api_key = 'AIzaSyA90YHtUf0oTZHRrUHjPG_lzR6ls_xyBYA'
+    api_key = st.secrets.get('GEMINI_API_KEY', '')
     if not api_key:
         return 'Gemini API key is missing. Add GEMINI_API_KEY in Streamlit secrets.'
 
