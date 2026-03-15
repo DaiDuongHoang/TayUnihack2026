@@ -1,4 +1,6 @@
+import cv2
 import streamlit as st
+import numpy as np
 import os
 from pathlib import Path
 from Authentication import is_authenticated, login_screen
@@ -427,38 +429,36 @@ def add_clothe_item():
     manual_color = None
 
     if has_uploaded_files:
-        try:
-            from ultralytics import YOLO
-        except ModuleNotFoundError:
-            st.error(
-                'Image auto-detection is unavailable because ultralytics is not installed.'
-            )
-            st.info('Please remove the upload and enter details manually for now.')
-            return
-
+        import onnxruntime as ort
         current_path = os.path.dirname(__file__)
         parent_path = os.path.dirname(current_path)
-        color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
-        category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
+        color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.onnx')
+        category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.onnx')
 
-        if not os.path.exists(color_cls_path) or not os.path.exists(category_cls_path):
-            st.error('Model files are missing. Please check the models folder.')
-            return
-
-        color_model = YOLO(str(color_cls_path))
-        category_model = YOLO(str(category_cls_path))
+        # Load ONNX models with CPU provider
+        color_model = ort.InferenceSession(
+            color_cls_path, providers=['CPUExecutionProvider']
+        )
+        category_model = ort.InferenceSession(
+            category_cls_path, providers=['CPUExecutionProvider']
+        )
 
         file = uploaded_files
         st.image(file, caption=file.name)
-        pred = color_model.predict(source=file)
-        clothe_color = pred[0]
-        top_1_idx = int(clothe_color.probs.top1)
-        manual_color = color_model.names[top_1_idx]
+        file_bytes = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)  # numpy array
+        
+        # Preprocess the image for model input (resize, normalize, etc.)
+        img_resized = cv2.resize(img, (224, 224))
+        img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+        x = img_rgb.astype(np.float32) / 255.0
+        x = np.transpose(x, (2, 0, 1))
+        x = np.expand_dims(x, axis=0)
 
-        pred = category_model.predict(source=file)
-        clothe_category = pred[0]
-        top_1_idx = int(clothe_category.probs.top1)
-        selected_cloth_type = category_model.names[top_1_idx]
+        color_outputs = color_model.run(None, {'images': x})
+        category_outputs = category_model.run(None, {'images': x})
+        manual_color = color_outputs[0][0]  # Assuming the output is in the expected format
+        selected_cloth_type = category_outputs[0][0]  # Assuming the output is in the expected format
 
         st.success('Successfully uploaded 1 file!')
     else:
