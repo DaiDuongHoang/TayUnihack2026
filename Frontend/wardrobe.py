@@ -361,7 +361,7 @@ def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bo
         st.error('Model files are missing. Please check the models folder.')
         return False
 
-    image_data = uploaded_file.getvalue()
+    image_data = uploaded_file
     file_bytes = np.asarray(bytearray(image_data), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     if img is None:
