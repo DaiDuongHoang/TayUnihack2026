@@ -2,6 +2,11 @@ import streamlit as st
 from Authentication import is_authenticated, login_screen
 import base64
 from data_backend import get_user_location, get_user_catalog
+from loading_overlay import (
+    show_loading_overlay,
+    clear_loading_overlay,
+    render_panel_loading,
+)
 from openweatherapi import fetch_weather_bundle
 
 # use wide layout so panels have more room
@@ -236,11 +241,10 @@ def _display_wardrobe_preview():
         st.markdown(sizing_script, unsafe_allow_html=True)
 
 
-def _display_weather():
+def _resolve_weather_location():
     # any authenticated email: local or Google
     user_email = st.session_state.get('local_user') or getattr(st.user, 'email', None)
 
-    # --- Weather ---
     location = None
     if user_email:
         try:
@@ -255,6 +259,22 @@ def _display_weather():
         if saved_city or saved_country:
             location = (saved_city, saved_country)
 
+    return location
+
+
+def _load_weather_panel_state():
+    location = _resolve_weather_location()
+    if not location:
+        return location, None, None
+
+    try:
+        bundle = fetch_weather_bundle(location[0], location[1])
+        return location, bundle, None
+    except Exception as exc:
+        return location, None, str(exc)
+
+
+def _display_weather(location, bundle, error_message):
     if not location:
         # If no saved location, show a button that takes the user to the Location page
         if st.button(
@@ -268,49 +288,63 @@ def _display_weather():
                 st.experimental_set_query_params(page='Location')
             except Exception:
                 pass
-    if location:
-        weather_progress = st.progress(0, text='Loading weather panel...')
-        try:
-            weather_progress.progress(25, text='Fetching latest weather data...')
-            bundle = fetch_weather_bundle(location[0], location[1])
-            weather_progress.progress(65, text='Preparing weather panel...')
-            cur = bundle.get('current', {})
-            main = cur.get('main', {})
-            weather = cur.get('weather', [{}])[0]
-
-            # compute emoji for header from weather description
-            try:
-                desc_text = (
-                    weather.get('main') or weather.get('description') or ''
-                ).strip()
-                emoji = _description_emoji(desc_text)
-            except Exception:
-                emoji = ''
-
-            st.subheader(f'Weather Panel {emoji}')
-
-            cols = st.columns([1, 2])
-            with cols[0]:
-                temp_val = main.get('temp', None)
-                try:
-                    temp_text = f'{float(temp_val):.1f}'
-                except Exception:
-                    temp_text = 'N/A'
-                st.metric('Temp (°C)', temp_text)
-                st.caption(bundle.get('location', ''))
-            with cols[1]:
-                st.markdown(
-                    f'**{weather.get("main", "")}** — {weather.get("description", "")}'
-                )
-                st.write(f'**Humidity**: {main.get("humidity", "N/A")}%')
-                st.write(f'**Wind**: {cur.get("wind", {}).get("speed", "N/A")} m/s')
-            weather_progress.progress(100, text='Weather panel ready')
-        except Exception as e:
-            st.warning(f'Unable to fetch weather: {e}')
-        finally:
-            weather_progress.empty()
-    else:
         st.info("No location provided. Click 'Set location' to open the Location page.")
+        return
+
+    if error_message:
+        st.warning(f'Unable to fetch weather: {error_message}')
+        return
+
+    cur = bundle.get('current', {})
+    main = cur.get('main', {})
+    weather = cur.get('weather', [{}])[0]
+
+    try:
+        desc_text = (weather.get('main') or weather.get('description') or '').strip()
+        emoji = _description_emoji(desc_text)
+    except Exception:
+        emoji = ''
+
+    st.subheader(f'Weather Panel {emoji}')
+
+    cols = st.columns([1, 2])
+    with cols[0]:
+        temp_val = main.get('temp', None)
+        try:
+            temp_text = f'{float(temp_val):.1f}'
+        except Exception:
+            temp_text = 'N/A'
+        st.metric('Temp (°C)', temp_text)
+        st.caption(bundle.get('location', ''))
+    with cols[1]:
+        st.markdown(
+            f'**{weather.get("main", "")}** — {weather.get("description", "")}'
+        )
+        st.write(f'**Humidity**: {main.get("humidity", "N/A")}%')
+        st.write(f'**Wind**: {cur.get("wind", {}).get("speed", "N/A")} m/s')
+
+
+def _display_ai_stylist_panel():
+    st.subheader('AI Stylist')
+    st.caption(
+        'Get an outfit recommendation using your current weather and wardrobe.'
+    )
+    if st.button(
+        'Suggest Outfit with AI',
+        key='dashboard_ai_stylist',
+        type='primary',
+        width='stretch',
+        icon='✨',
+    ):
+        overlay_slot, overlay_started_at = show_loading_overlay(
+            'Opening AI Stylist...'
+        )
+        st.session_state.llm_prefill_prompt = (
+            'Suggest an outfit based on my current weather and my wardrobe. '
+            'Give one best outfit and one backup option.'
+        )
+        clear_loading_overlay(overlay_slot, overlay_started_at)
+        st.switch_page('LLM.py')
 
 
 # CSS animations
@@ -437,28 +471,27 @@ if __name__ == '__main__':
         # ------ Creates 2 columns ----------
         leftcol, rightcol = st.columns([0.65, 0.35], gap='medium')
 
+        with rightcol:
+            with st.container(border=True):
+                weather_slot = st.empty()
+                with weather_slot.container():
+                    render_panel_loading('Loading weather panel...', min_height_px=190)
+
+            with st.container(border=True):
+                stylist_slot = st.empty()
+                with stylist_slot.container():
+                    render_panel_loading('Loading AI Stylist...', min_height_px=170)
+
         with leftcol:
             with st.container(border=True):
                 _display_wardrobe_preview()
 
-        with rightcol:
-            with st.container(border=True):
-                _display_weather()
+        weather_location, weather_bundle, weather_error = _load_weather_panel_state()
 
-            with st.container(border=True):
-                st.subheader('AI Stylist')
-                st.caption(
-                    'Get an outfit recommendation using your current weather and wardrobe.'
-                )
-                if st.button(
-                    'Suggest Outfit with AI',
-                    key='dashboard_ai_stylist',
-                    type='primary',
-                    width='stretch',
-                    icon='✨',
-                ):
-                    st.session_state.llm_prefill_prompt = (
-                        'Suggest an outfit based on my current weather and my wardrobe. '
-                        'Give one best outfit and one backup option.'
-                    )
-                    st.switch_page('LLM.py')
+        weather_slot.empty()
+        with weather_slot.container():
+            _display_weather(weather_location, weather_bundle, weather_error)
+
+        stylist_slot.empty()
+        with stylist_slot.container():
+            _display_ai_stylist_panel()
