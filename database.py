@@ -456,26 +456,52 @@ def save_user_location(email: str, country: str, city: str) -> bool:
     normalized_email = _normalize_email(email)
     if not normalized_email:
         return False
+
+    clean_country = country.strip()
+    clean_city = city.strip()
+    formatted_location = _format_location(clean_country, clean_city)
+
     with get_connection() as conn:
-        cur = conn.execute(
-            'UPDATE users SET location = ?, saved_country = ?, saved_city = ? WHERE username = ?',
-            (
-                _format_location(country.strip(), city.strip()),
-                country.strip(),
-                city.strip(),
-                normalized_email,
-            ),
-        )
+        existing = conn.execute(
+            'SELECT id FROM users WHERE username = ?', (normalized_email,)
+        ).fetchone()
+
+        if existing is None:
+            conn.execute(
+                """
+                INSERT INTO users
+                    (username, password, first_name, auth_provider, location, saved_country, saved_city)
+                VALUES (?, '', ?, 'google', ?, ?, ?)
+                """,
+                (
+                    normalized_email,
+                    'User',
+                    formatted_location,
+                    clean_country,
+                    clean_city,
+                ),
+            )
+        else:
+            conn.execute(
+                'UPDATE users SET location = ?, saved_country = ?, saved_city = ? WHERE username = ?',
+                (
+                    formatted_location,
+                    clean_country,
+                    clean_city,
+                    normalized_email,
+                ),
+            )
+
         conn.commit()
-        return cur.rowcount > 0
+        return True
 
 
 def get_user_location(email: str) -> dict[str, str] | None:
     user = _resolve_user(email)
     if user is None:
         return None
-    country = (user['saved_country'] or '').strip() or DEFAULT_LOCATION[0]
-    city = (user['saved_city'] or '').strip() or DEFAULT_LOCATION[1]
+    country = (user['saved_country'] or '').strip()
+    city = (user['saved_city'] or '').strip()
     return {'country': country, 'city': city}
 
 
