@@ -10,6 +10,11 @@ from loading_overlay import (
 )
 from openweatherapi import fetch_weather_bundle
 
+try:
+    import pycountry
+except Exception:
+    pycountry = None
+
 # use wide layout so panels have more room
 st.set_page_config(layout='wide')
 
@@ -275,13 +280,41 @@ def _resolve_weather_location():
     return location
 
 
+def _to_country_code(country_name_or_code: str) -> str:
+    country = str(country_name_or_code or '').strip()
+    if not country:
+        return ''
+
+    if len(country) == 2 and country.isalpha():
+        return country.upper()
+
+    if pycountry is not None:
+        try:
+            return str(pycountry.countries.lookup(country).alpha_2).upper()
+        except LookupError:
+            pass
+
+    # Fallback to original text and let OpenWeather geocoding resolve it.
+    return country
+
+
 def _load_weather_panel_state():
     location = _resolve_weather_location()
     if not location:
         return location, None, None
 
     try:
-        bundle = fetch_weather_bundle(location[0], location[1])
+        city = str(location[0] or '').strip()
+        country = str(location[1] or '').strip()
+
+        if city:
+            locality = city
+            country_arg = _to_country_code(country) if country else ''
+        else:
+            locality = country
+            country_arg = ''
+
+        bundle = fetch_weather_bundle(locality, country_arg)
         return location, bundle, None
     except Exception as exc:
         return location, None, str(exc)
