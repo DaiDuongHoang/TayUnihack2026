@@ -1,5 +1,6 @@
 ﻿from datetime import datetime, timedelta, timezone
 from typing import Any
+import html
 
 import streamlit as st
 from Authentication import is_authenticated, login_screen
@@ -19,6 +20,7 @@ except Exception:
 from openweatherapi import fetch_weather_bundle
 
 LIVE_SUCCESS_NOTICE_SECONDS = 4.0
+TABLE_REVEAL_CHUNK_SIZE = 6
 
 
 class MockWeatherRepository:
@@ -661,45 +663,80 @@ class WeatherPage:
                 box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
             }
 
-            /* Dedicated animation for weather refresh icon button */
-            @keyframes refreshButtonFloat {
-                0%,
-                100% {
-                    transform: translateY(0);
-                }
-                50% {
-                    transform: translateY(-5px);
-                }
-            }
-
-            @keyframes refreshButtonWiggle {
-                0% {
-                    transform: translateX(-2px) scale(1.05) rotate(0deg);
-                }
-                25% {
-                    transform: translateX(-4px) scale(1.06) rotate(-1deg);
-                }
-                50% {
-                    transform: translateX(-2px) scale(1.07) rotate(1deg);
-                }
-                75% {
-                    transform: translateX(-4px) scale(1.06) rotate(-1deg);
-                }
-                100% {
-                    transform: translateX(-2px) scale(1.05) rotate(0deg);
-                }
-            }
-
             .st-key-refresh_weather_button button {
-                animation: refreshButtonFloat 2.2s ease-in-out infinite;
-                border: 1px solid rgba(59, 130, 246, 0.35);
-                transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+                animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+                transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+                background-color: #dcfce7;
+                border: 1px solid #86efac;
+                color: #14532d;
             }
 
             .st-key-refresh_weather_button button:hover {
-                animation: refreshButtonWiggle 0.9s ease-in-out infinite;
-                box-shadow: 0 10px 22px rgba(59, 130, 246, 0.45);
-                filter: brightness(1.08) saturate(1.12);
+                transform: translateY(-5px) scale(1.11);
+                box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
+                background-color: #bbf7d0 !important;
+                border-color: #4ade80 !important;
+                color: #14532d !important;
+            }
+
+            .st-key-refresh_weather_button button:focus,
+            .st-key-refresh_weather_button button:active {
+                background-color: #bbf7d0 !important;
+                border-color: #4ade80 !important;
+                color: #14532d !important;
+            }
+
+            .st-key-chart_next_day button,
+            .st-key-chart_prev_day button {
+                animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+                transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+            }
+
+            .st-key-chart_next_day button {
+                background-color: #dcfce7;
+                border: 1px solid #86efac;
+                color: #14532d;
+            }
+
+            .st-key-chart_prev_day button {
+                background-color: #fee2e2;
+                border: 1px solid #fca5a5;
+                color: #7f1d1d;
+            }
+
+            .st-key-chart_next_day button:hover,
+            .st-key-chart_prev_day button:hover {
+                transform: translateY(-5px) scale(1.11);
+                box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
+            }
+
+            .st-key-chart_next_day button:hover,
+            .st-key-chart_next_day button:focus,
+            .st-key-chart_next_day button:active {
+                background-color: #bbf7d0 !important;
+                border-color: #4ade80 !important;
+                color: #14532d !important;
+            }
+
+            .st-key-chart_prev_day button:hover,
+            .st-key-chart_prev_day button:focus,
+            .st-key-chart_prev_day button:active {
+                background-color: #fecaca !important;
+                border-color: #f87171 !important;
+                color: #7f1d1d !important;
+            }
+
+            @keyframes tooltipFadeUp {
+                from {
+                    opacity: 0;
+                }
+                to {
+                    opacity: 1;
+                }
+            }
+
+            div[data-baseweb="tooltip"] > div {
+                animation: tooltipFadeUp 0.2s ease both;
             }
 
             /* Weather page visual shell styling */
@@ -722,63 +759,141 @@ class WeatherPage:
                 font-size: 1rem;
             }
 
-            /* Prevent the 3-dot element toolbar from covering chart points near top-right */
-            div[data-testid="stVegaLiteChart"] div[data-testid="stElementToolbar"] {
+            /* Prevent chart toolbar (three dots/fullscreen) from covering data points */
+            div[data-testid="stVegaLiteChart"] [data-testid="stElementToolbar"],
+            div[data-testid="stVegaLiteChart"] [data-testid="stToolbar"],
+            div[data-testid="stVegaLiteChart"] .stElementToolbar {
                 display: none !important;
             }
 
-            @keyframes liveSuccessFadeAway {
-                0% {
+            /* Animated hourly details table */
+            @keyframes hourlyTableIn {
+                from {
                     opacity: 0;
-                    transform: translateY(-6px);
-                    max-height: 48px;
-                    margin-top: 0.35rem;
-                    padding-top: 0.55rem;
-                    padding-bottom: 0.55rem;
-                    border-width: 1px;
+                    transform: translateY(6px);
                 }
-                12% {
+                to {
                     opacity: 1;
                     transform: translateY(0);
-                    max-height: 48px;
-                    margin-top: 0.35rem;
-                    padding-top: 0.55rem;
-                    padding-bottom: 0.55rem;
-                    border-width: 1px;
-                }
-                78% {
-                    opacity: 1;
-                    transform: translateY(0);
-                    max-height: 48px;
-                    margin-top: 0.35rem;
-                    padding-top: 0.55rem;
-                    padding-bottom: 0.55rem;
-                    border-width: 1px;
-                }
-                100% {
-                    opacity: 0;
-                    transform: translateY(-4px);
-                    max-height: 0;
-                    margin-top: 0;
-                    padding-top: 0;
-                    padding-bottom: 0;
-                    border-width: 0;
                 }
             }
 
-            .live-success-pill {
-                display: block;
-                width: fit-content;
+            @keyframes hourlyTableInAlt {
+                from {
+                    opacity: 0;
+                    transform: translateY(6px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes hourlyTableCollapseIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-6px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes hourlyTableCollapseInAlt {
+                from {
+                    opacity: 0;
+                    transform: translateY(-6px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes hourlyRowIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes hourlyRowInAlt {
+                from {
+                    opacity: 0;
+                    transform: translateY(8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes hourlyRowCollapseIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes hourlyRowCollapseInAlt {
+                from {
+                    opacity: 0;
+                    transform: translateY(-8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .weather-hourly-table-wrap {
+                border: 1px solid #cbd5e1;
+                border-radius: 12px;
                 overflow: hidden;
-                margin: 0.35rem 0 0;
-                padding: 0.55rem 0.9rem;
-                border-radius: 0.6rem;
+                background: #ffffff;
+                margin-bottom: 0.55rem;
+            }
+
+            .weather-hourly-table {
+                width: 100%;
+                border-collapse: collapse;
                 font-size: 0.92rem;
-                font-weight: 600;
-                color: #065f46;
-                background: #d1fae5;
-                border: 1px solid #86efac;
-                animation: liveSuccessFadeAway 3.8s ease forwards;
+            }
+
+            .weather-hourly-table thead th {
+                text-align: left;
+                background: #f8fafc;
+                color: #0f172a;
+                font-weight: 700;
+                padding: 0.6rem 0.7rem;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .weather-hourly-table tbody td {
+                padding: 0.56rem 0.7rem;
+                border-bottom: 1px solid #e2e8f0;
+                color: #0f172a;
+            }
+
+            .weather-hourly-table tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            .weather-hourly-table tbody tr:nth-child(even) {
+                background: #f8fafc;
+            }
+
+            .weather-hourly-row {
+                opacity: 0;
             }
             </style>
             """
@@ -828,10 +943,7 @@ class WeatherPage:
                 show_live_success = True
 
             if show_live_success:
-                st.markdown(
-                    "<div class='live-success-pill'>Live OpenWeather data loaded.</div>",
-                    unsafe_allow_html=True,
-                )
+                st.toast("Live OpenWeather data loaded.", icon="✅", duration="short")
 
         sync_text = "Last synced: Not synced yet"
         if last_synced_at:
@@ -991,6 +1103,13 @@ class WeatherPage:
 
         chart_spec = {
             "data": {"values": chart_values},
+            "selection": {
+                "x_zoom_pan": {
+                    "type": "interval",
+                    "bind": "scales",
+                    "encodings": ["x"],
+                }
+            },
             "layer": [
                 {
                     "mark": {"type": "line", "strokeWidth": 3, "color": "#0284c7"},
@@ -1094,16 +1213,134 @@ class WeatherPage:
         with tab_next:
             if today_rows:
                 display_rows = WeatherChartFactory.build_table_rows(today_rows)
-                st.table(display_rows)
+                self._render_progressive_table(
+                    display_rows=display_rows,
+                    state_key_prefix="weather_today",
+                )
             else:
                 st.info("No hourly forecast available for today yet.")
 
         with tab_tomorrow:
             if tomorrow_rows:
                 display_rows = WeatherChartFactory.build_table_rows(tomorrow_rows)
-                st.table(display_rows)
+                self._render_progressive_table(
+                    display_rows=display_rows,
+                    state_key_prefix="weather_tomorrow",
+                )
             else:
                 st.info("No hourly forecast available for tomorrow yet.")
+
+    def _render_progressive_table(
+        self,
+        display_rows: list[dict[str, Any]],
+        state_key_prefix: str,
+    ) -> None:
+        total_rows = len(display_rows)
+        if total_rows == 0:
+            return
+
+        base_visible = min(TABLE_REVEAL_CHUNK_SIZE, total_rows)
+        visible_count_key = f"{state_key_prefix}_visible_count"
+        anim_action_key = f"{state_key_prefix}_anim_action"
+        anim_tick_key = f"{state_key_prefix}_anim_tick"
+
+        if visible_count_key not in st.session_state:
+            st.session_state[visible_count_key] = base_visible
+        else:
+            st.session_state[visible_count_key] = max(
+                base_visible,
+                min(int(st.session_state[visible_count_key]), total_rows),
+            )
+
+        if anim_action_key not in st.session_state:
+            st.session_state[anim_action_key] = "expand"
+        if anim_tick_key not in st.session_state:
+            st.session_state[anim_tick_key] = 0
+
+        visible_count = int(st.session_state[visible_count_key])
+        st.markdown(
+            self._build_animated_table_html(
+                display_rows=display_rows[:visible_count],
+                motion=str(st.session_state[anim_action_key]),
+                motion_tick=int(st.session_state[anim_tick_key]),
+            ),
+            unsafe_allow_html=True,
+        )
+
+        remaining = total_rows - visible_count
+        show_more_key = f"{state_key_prefix}_show_more"
+        show_less_key = f"{state_key_prefix}_show_less"
+
+        more_col, less_col = st.columns(2)
+        with more_col:
+            if remaining > 0 and st.button(
+                f"Show more ({remaining} left)",
+                key=show_more_key,
+                use_container_width=True,
+            ):
+                st.session_state[anim_action_key] = "expand"
+                st.session_state[anim_tick_key] = int(st.session_state[anim_tick_key]) + 1
+                st.session_state[visible_count_key] = min(
+                    total_rows,
+                    visible_count + TABLE_REVEAL_CHUNK_SIZE,
+                )
+                st.rerun()
+
+        with less_col:
+            if visible_count > base_visible and st.button(
+                "Show less",
+                key=show_less_key,
+                use_container_width=True,
+            ):
+                st.session_state[anim_action_key] = "collapse"
+                st.session_state[anim_tick_key] = int(st.session_state[anim_tick_key]) + 1
+                st.session_state[visible_count_key] = max(
+                    base_visible,
+                    visible_count - TABLE_REVEAL_CHUNK_SIZE,
+                )
+                st.rerun()
+
+    def _build_animated_table_html(
+        self,
+        display_rows: list[dict[str, Any]],
+        motion: str,
+        motion_tick: int,
+    ) -> str:
+        if not display_rows:
+            return ""
+
+        use_alt = motion_tick % 2 == 1
+        if motion == "collapse":
+            table_anim = "hourlyTableCollapseInAlt" if use_alt else "hourlyTableCollapseIn"
+            row_anim = "hourlyRowCollapseInAlt" if use_alt else "hourlyRowCollapseIn"
+        else:
+            table_anim = "hourlyTableInAlt" if use_alt else "hourlyTableIn"
+            row_anim = "hourlyRowInAlt" if use_alt else "hourlyRowIn"
+
+        headers = list(display_rows[0].keys())
+        parts = [
+            f'<div class="weather-hourly-table-wrap" style="animation: {table_anim} 0.26s ease both;">',
+            '<table class="weather-hourly-table">',
+            "<thead><tr>",
+        ]
+
+        for header in headers:
+            parts.append(f"<th>{html.escape(str(header))}</th>")
+
+        parts.append("</tr></thead><tbody>")
+
+        for idx, row in enumerate(display_rows):
+            delay = min(0.42, idx * 0.028)
+            parts.append(
+                f'<tr class="weather-hourly-row" style="animation: {row_anim} 0.26s ease forwards; animation-delay: {delay:.3f}s;">'
+            )
+            for header in headers:
+                cell_value = row.get(header, "")
+                parts.append(f"<td>{html.escape(str(cell_value))}</td>")
+            parts.append("</tr>")
+
+        parts.append("</tbody></table></div>")
+        return "".join(parts)
 
 
 fallback_repository = MockWeatherRepository()
