@@ -16,26 +16,35 @@ if not is_authenticated():
 st.html("""
 <style>
 /* Slide-fade-DOWN keyframe */
-@keyframes slideFadeDown {
-    from {
+@keyframes fadeSlideDownSettle {
+    0% {
         opacity: 0;
         transform: translateY(-20px);
     }
-    to {
+    60% {
+        opacity: 1;
+        transform: translateY(4px);
+    }
+    100% {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
+.location-title {
+    margin: 0;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+
 /* Apply to all buttons */
 div[data-testid="stButton"] button {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Apply to bordered column/grid boxes */
 div[data-testid="stColumn"] {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -46,7 +55,7 @@ div[data-testid="stColumn"]:hover {
 
 /* Apply to horizontal divider */
 div[data-testid="stDivider"] {
-    animation: slideFadeDown 0.4s ease 0.3s forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
     opacity: 0; /* Start hidden until animation runs */
 }
 
@@ -111,7 +120,7 @@ div[data-testid="stButton"] button:hover {
 
 /* Apply slideFadeDown animation to st.success (alert elements) */
 div[data-testid="stAlert"] {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -122,7 +131,7 @@ div[data-testid="stAlert"]:hover {
 </style>
 """)
 
-st.title("🗺️ My Location")
+st.markdown('<h1 class="location-title">🗺️ My Location</h1>', unsafe_allow_html=True)
 
 # Load country + city data
 gc = geonamescache.GeonamesCache()

@@ -691,13 +691,17 @@ class WeatherPage:
         st.html(
             """
             <style>
-            /* Slide-fade-DOWN keyframe */
-            @keyframes slideFadeDown {
-                from {
+            /* Shared settle animation used across pages */
+            @keyframes fadeSlideDownSettle {
+                0% {
                     opacity: 0;
                     transform: translateY(-20px);
                 }
-                to {
+                60% {
+                    opacity: 1;
+                    transform: translateY(4px);
+                }
+                100% {
                     opacity: 1;
                     transform: translateY(0);
                 }
@@ -705,24 +709,24 @@ class WeatherPage:
 
             /* Apply to all buttons */
             div[data-testid="stButton"] button {
-                animation: slideFadeDown 0.4s ease forwards;
+                animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
                 transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1), filter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
             }
 
             /* Apply to bordered column/grid boxes */
             div[data-testid="stColumn"] {
-                animation: slideFadeDown 0.4s ease forwards;
+                animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
             }
 
             /* Apply to horizontal divider */
             div[data-testid="stDivider"] {
-                animation: slideFadeDown 0.4s ease 0.3s forwards;
+                animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
                 opacity: 0;
             }
 
             /* Apply to alerts (success/warning/info/error) */
             div[data-testid="stAlert"] {
-                animation: slideFadeDown 0.4s ease forwards;
+                animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
             }
 
             /* Stagger for buttons */
@@ -744,7 +748,7 @@ class WeatherPage:
             }
 
             .st-key-refresh_weather_button button {
-                animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+                animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
                 transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
                 background-color: #dcfce7;
                 border: 1px solid #86efac;
@@ -768,7 +772,7 @@ class WeatherPage:
 
             .st-key-chart_next_day button,
             .st-key-chart_prev_day button {
-                animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+                animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
                 transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
             }
 
@@ -826,7 +830,7 @@ class WeatherPage:
                 background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 45%, #e0f2fe 100%);
                 border: 1px solid #bfdbfe;
                 margin-bottom: 1rem;
-                animation: slideFadeDown 0.5s ease forwards;
+                animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
             }
             .weather-title {
                 font-size: 2rem;

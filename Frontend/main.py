@@ -1,6 +1,8 @@
 import streamlit as st
 from pathlib import Path
 
+# RUN THIS IN STREAMLIT FIRST
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -31,8 +33,7 @@ if LOGO_BIG is not None:
         else:
             st.logo(image=str(LOGO_BIG), size='large')
     else:
-        st.sidebar.image(str(LOGO_BIG), width='stretch')  # RUN THIS IN STREAMLIT FIRST
-
+        st.sidebar.image(str(LOGO_BIG), width='stretch')
 pages = {
     'Home': [
         st.Page('dashboard.py', title='Dashboard', icon='🏡', default=True),
@@ -40,7 +41,7 @@ pages = {
         st.Page('weather.py', title='Weather', icon='🌦️'),
         st.Page('location.py', title='Location', icon='🎈'),
         st.Page('LLM.py', title='AI Stylist', icon='✨'),
-        st.Page('../webcamintegration.py', title='AI Webcam', icon='📷'),
+        st.Page('webcamintegration.py', title='AI Webcam', icon='📷'),
     ],
     'Account': [
         st.Page('user_profile.py', title='Profile', icon='👤'),

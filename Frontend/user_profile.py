@@ -7,29 +7,28 @@ def _inject_profile_styles() -> None:
     st.markdown(
         """
         <style>
-        @keyframes profileFadeUp {
-            from {
+        @keyframes fadeSlideDownSettle {
+            0% {
                 opacity: 0;
-                transform: translateY(16px);
+                transform: translateY(-20px);
             }
-            to {
+            60% {
+                opacity: 1;
+                transform: translateY(4px);
+            }
+            100% {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
 
-        @keyframes profileAvatarFloat {
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(-5px);
-            }
+        .profile-hero {
+            animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
         }
 
-        .profile-hero {
-            animation: profileFadeUp 0.55s ease-out both;
+        .profile-title {
+            margin: 0;
+            animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
         }
 
         .profile-card {
@@ -42,13 +41,12 @@ def _inject_profile_styles() -> None:
             background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(239,246,255,0.94));
             box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
             margin-bottom: 1rem;
-            animation: profileFadeUp 0.55s ease-out both;
+            animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.05s both;
         }
 
         .profile-card:hover {
-            transform: translateY(-3px);
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
-            box-shadow: 0 24px 44px rgba(37, 99, 235, 0.12);
+            box-shadow: 0 22px 40px rgba(37, 99, 235, 0.14);
+            transition: box-shadow 0.2s ease;
         }
 
         .profile-avatar {
@@ -63,13 +61,13 @@ def _inject_profile_styles() -> None:
             font-size: 1.6rem;
             font-weight: 700;
             color: #fff;
-            animation: profileAvatarFloat 2.8s ease-in-out infinite;
+            animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.1s both;
         }
 
         div[data-testid="stForm"],
         div[data-testid="stAlert"],
         div[data-testid="stHorizontalBlock"] {
-            animation: profileFadeUp 0.48s ease-out both;
+            animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.2s both;
         }
 
         div[data-testid="stForm"] {
@@ -81,13 +79,13 @@ def _inject_profile_styles() -> None:
 
         div[data-testid="stButton"] button,
         div[data-testid="stFormSubmitButton"] button {
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
+            transition: box-shadow 0.2s ease;
         }
 
         div[data-testid="stButton"] button:hover,
         div[data-testid="stFormSubmitButton"] button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
         }
         </style>
         """,
@@ -109,7 +107,7 @@ local_user = st.session_state.get('local_user')
 local_user_name = st.session_state.get('local_user_name', 'User')
 guest = is_guest()
 
-st.title('👤 Profile')
+st.markdown('<h1 class="profile-title">👤 Profile</h1>', unsafe_allow_html=True)
 
 pending_toast = st.session_state.pop('profile_toast_message', None)
 if pending_toast:

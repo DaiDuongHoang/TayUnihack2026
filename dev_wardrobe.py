@@ -60,61 +60,38 @@ if not is_authenticated():
 # CSS animations
 st.html("""
 <style>
-/* Shared settle animation used across pages */
-@keyframes fadeSlideDownSettle {
-    0% {
+/* Slide-fade-DOWN keyframe */
+@keyframes slideFadeDown {
+    from {
         opacity: 0;
         transform: translateY(-20px);
     }
-    60% {
-        opacity: 1;
-        transform: translateY(4px);
-    }
-    100% {
+    to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
-.wardrobe-title {
-    margin: 0;
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
-}
-
-/* Buttons */
+/* Apply to all buttons */
 div[data-testid="stButton"] button {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Grid columns */
+/* Apply to bordered column/grid boxes */
 div[data-testid="stColumn"] {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
 div[data-testid="stColumn"]:hover {
-    transform: translateY(-6px) scale(1.01);
-    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.16);
+    transform: translateY(-10px) scale(1.01);
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.20);
 }
 
-/* Divider */
+/* Apply to horizontal divider */
 div[data-testid="stDivider"] {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
-}
-
-/* Inputs and forms */
-div[data-testid="stTextInput"],
-div[data-testid="stSelectbox"],
-div[data-testid="stFileUploader"],
-div[data-testid="stColorPicker"],
-div[data-testid="stForm"] {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
-}
-
-/* Markdown/text blocks */
-div[data-testid="stMarkdownContainer"] {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
 }
 
 /* Stagger for buttons */
@@ -129,26 +106,77 @@ div[data-testid="stColumn"]:nth-child(2) { animation-delay: 0.1s; }
 div[data-testid="stColumn"]:nth-child(3) { animation-delay: 0.2s; }
 div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
 
-/* Button hover */
+/* Keep hover effect on buttons */
 div[data-testid="stButton"] button:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow: 0px 12px 24px rgba(0, 0, 0, 0.22);
+    transform: translateY(-5px) scale(1.11);
+    box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
+}
+
+/* Dedicated animation for the Go Back button */
+@keyframes backButtonFloat {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-7px);
+    }
+}
+
+@keyframes backButtonWiggle {
+    0% {
+        transform: translateX(-6px) scale(1.09) rotate(0deg);
+    }
+    25% {
+        transform: translateX(-10px) scale(1.11) rotate(-2deg);
+    }
+    50% {
+        transform: translateX(-6px) scale(1.12) rotate(2deg);
+    }
+    75% {
+        transform: translateX(-10px) scale(1.11) rotate(-1deg);
+    }
+    100% {
+        transform: translateX(-6px) scale(1.09) rotate(0deg);
+    }
 }
 
 .st-key-back_button button {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.1s both;
+    animation: backButtonFloat 1.8s ease-in-out infinite;
     border: 1px solid rgba(59, 130, 246, 0.35);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .st-key-back_button button:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.38);
-    filter: brightness(1.06) saturate(1.08);
+    animation: backButtonWiggle 0.45s ease-in-out infinite;
+    box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55);
+    filter: brightness(1.14) saturate(1.2);
+}
+
+/* Apply slideFadeDown animation to st.success (alert elements) */
+/* Delete button — danger pulse idle + shake on hover */
+@keyframes deleteDangerPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0);
+        border-color: rgba(239, 68, 68, 0.28);
+    }
+    50% {
+        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0.18);
+        border-color: rgba(239, 68, 68, 0.65);
+    }
+}
+
+@keyframes deleteShake {
+    0%   { transform: translateX(0) scale(1.04); }
+    25%  { transform: translateX(-2px) scale(1.05); }
+    50%  { transform: translateX(2px) scale(1.06); }
+    75%  { transform: translateX(-1px) scale(1.05); }
+    100% { transform: translateX(0) scale(1.04); }
 }
 
 [class*="st-key-del"] button {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               deleteDangerPulse 2.0s ease-in-out 0.7s infinite !important;
     border: 1.5px solid rgba(239, 68, 68, 0.32) !important;
     color: #dc2626 !important;
     transition: transform 0.18s ease, box-shadow 0.18s ease,
@@ -156,29 +184,22 @@ div[data-testid="stButton"] button:hover {
 }
 
 [class*="st-key-del"] button:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.4) !important;
+    animation: deleteShake 0.42s ease-in-out infinite !important;
+    box-shadow: 0 14px 34px rgba(239, 68, 68, 0.55) !important;
     background: rgba(254, 226, 226, 0.88) !important;
     border-color: rgba(239, 68, 68, 0.75) !important;
     color: #b91c1c !important;
 }
 
-/* Alerts */
+/* Apply slideFadeDown animation to st.success (alert elements) */
 div[data-testid="stAlert"] {
-    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 div[data-testid="stAlert"]:hover {
     transform: translateY(-6px);
     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.14);
-}
-
-/* Sidebar should remain static (no animations) */
-section[data-testid="stSidebar"] * {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
 }
 
 </style>
@@ -289,7 +310,9 @@ def _is_stale_media_id(value: object) -> bool:
     return bool(re.fullmatch(r'[0-9a-f]{40,64}\.(jpg|jpeg|png|webp)', text))
 
 
-def _add_item_to_catalog(name, cloth_type, image=None, color=None, item_id=None, conf=None):
+def _add_item_to_catalog(
+    name, cloth_type, image=None, color=None, item_id=None, conf=None
+):
     _ensure_catalog_categories()
 
     if conf is not None and conf < 0.75:
@@ -321,118 +344,6 @@ def _set_catalog_item(old_category, item_index, updated_item, new_category):
         st.session_state.catalog[old_category].insert(item_index, merged_item)
     else:
         st.session_state.catalog[new_category].insert(0, merged_item)
-
-
-def _format_predicted_cloth_type(raw_label: str | None) -> str | None:
-    if not raw_label:
-        return None
-    normalized = raw_label.strip().lower()
-    mapping = {
-        't-shirt': '👕 T-Shirt',
-        'shirt': '👕 Shirt',
-        'sweater': '🧶 Sweater',
-        'dress': '👗 Dress',
-        'shorts': '👖 Shorts',
-        'skirt': '👗 Skirt',
-        'jeans': '👖 Jeans',
-        'pants': '👖 Pants',
-        'blazer': '🧥 Blazer',
-        'jacket': '🧥 Jacket',
-        'coat': '🥼 Coat',
-        'hoodie': '🧥 Hoodie',
-    }
-    return mapping.get(normalized, raw_label)
-
-
-def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bool:
-    """Add a clothing item from uploaded media using CV classification."""
-    try:
-        from ultralytics import YOLO
-    except ModuleNotFoundError:
-        st.error('Image auto-detection is unavailable (ultralytics not installed).')
-        return False
-
-    current_path = os.path.dirname(__file__)
-    parent_path = os.path.dirname(current_path)
-    color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
-    category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
-
-    if not os.path.exists(color_cls_path) or not os.path.exists(category_cls_path):
-        st.error('Model files are missing. Please check the models folder.')
-        return False
-
-    image_data = uploaded_file
-    file_bytes = np.asarray(bytearray(image_data), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-    if img is None:
-        st.error('Could not read image. Please upload a valid file.')
-        return False
-
-    color_model = YOLO(str(color_cls_path))
-    category_model = YOLO(str(category_cls_path))
-
-    color_pred = color_model.predict(source=img, device='cpu')
-    top1_color_idx = int(color_pred[0].probs.top1)
-    predicted_color = color_model.names[top1_color_idx]
-
-    category_pred = category_model.predict(source=img, device='cpu')
-    top1_cat_idx = int(category_pred[0].probs.top1)
-    category_conf = float(category_pred[0].probs.top1conf)
-    raw_cloth_type = str(category_model.names[top1_cat_idx])
-    selected_cloth_type = _format_predicted_cloth_type(raw_cloth_type)
-
-    if category_conf < 0.55:
-        selected_cloth_type = None
-
-    item_id = None
-    if local_email:
-        item_id = add_clothing_item(
-            email=local_email,
-            item_name=item_name,
-            image_data=image_data,
-        )
-
-    category = _add_item_to_catalog(
-        name=item_name,
-        cloth_type=selected_cloth_type,
-        image=image_data,
-        color=predicted_color,
-        item_id=item_id,
-        conf=category_conf,
-    )
-    st.session_state.wardrobe_feedback = f'**Added 1 item to {category}.**'
-    return True
-
-
-def addclothemanual(item_name: str, selected_cloth_type: str | None,
-                    manual_color: str | None, local_email: str | None) -> bool:
-    """Add a clothing item manually using name, type, and color."""
-    if not selected_cloth_type or not manual_color:
-        st.error('Please select clothe type and color.')
-        return False
-
-    item_id = None
-    if local_email:
-        item_id = add_clothing_item(
-            email=local_email,
-            item_name=item_name,
-            cloth_type=selected_cloth_type,
-            color=manual_color,
-            wardrobe_category=CATEGORY_BY_CLOTH_TYPE.get(
-                selected_cloth_type, 'Accessories ⌚'
-            ),
-        )
-
-    category = _add_item_to_catalog(
-        name=item_name,
-        cloth_type=selected_cloth_type,
-        color=manual_color,
-        item_id=item_id,
-    )
-    st.session_state.wardrobe_feedback = (
-        f'**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**'
-    )
-    return True
 
 
 @st.dialog('Edit wardrobe item')
@@ -516,6 +427,10 @@ def _edit_wardrobe_item(category, item_index, local_user):
     st.toast(f'Updated {clean_name}. ✅')
     st.rerun()
 
+def add_clothe_image(file, color, cloth_type, item_name):
+    file_bytes = np.asarray(bytearray(file.getvalue()), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    st.image(file, caption=file.name)
 
 @st.dialog('Add a new clothe item')
 def add_clothe_item():
@@ -537,9 +452,69 @@ def add_clothe_item():
     manual_color = None
 
     if has_uploaded_files:
+        try:
+            from ultralytics import YOLO
+        except ModuleNotFoundError:
+            st.error('Image auto-detection is unavailable (ultralytics not installed).')
+            st.info('Remove the upload and enter item details manually.')
+            return
+
+        current_path = os.path.dirname(__file__)
+        parent_path = os.path.dirname(current_path)
+        color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
+        category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
+
+        if not os.path.exists(color_cls_path) or not os.path.exists(category_cls_path):
+            st.error('Model files are missing. Please check the models folder.')
+            return
+
+        color_model = YOLO(str(color_cls_path))
+        category_model = YOLO(str(category_cls_path))
+
         file = uploaded_files
+        file_bytes = np.asarray(bytearray(file.getvalue()), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
         st.image(file, caption=file.name)
-        st.info('Image will be analysed with computer vision when you click Submit.')
+
+        color_pred = color_model.predict(source=img, device='cpu')
+        top1_color_idx = int(color_pred[0].probs.top1)
+        manual_color = color_model.names[top1_color_idx]
+
+        category_pred = category_model.predict(source=img, device='cpu')
+        top1_cat_idx = int(category_pred[0].probs.top1)
+        selected_cloth_type = category_model.names[top1_cat_idx]
+        category_conf = float(category_pred[0].probs.top1conf)
+
+        if category_conf < 0.75:
+            selected_cloth_type = None
+
+        # Re-tag the predicted cloth type with emoji for better UI display
+        if selected_cloth_type == 't-shirt':
+            selected_cloth_type = '👕 T-Shirt'
+        elif selected_cloth_type == 'shirt':
+            selected_cloth_type = '👕 Shirt'
+        elif selected_cloth_type == 'sweater':
+            selected_cloth_type = '🧶 Sweater'
+        elif selected_cloth_type == 'dress':
+            selected_cloth_type = '👗 Dress'
+        elif selected_cloth_type == 'shorts':
+            selected_cloth_type = '👖 Shorts'
+        elif selected_cloth_type == 'skirt':
+            selected_cloth_type = '👗 Skirt'
+        elif selected_cloth_type == 'jeans':
+            selected_cloth_type = '👖 Jeans'
+        elif selected_cloth_type == 'pants':
+            selected_cloth_type = '👖 Pants'
+        elif selected_cloth_type == 'blazer':
+            selected_cloth_type = '🧥 Blazer'
+        elif selected_cloth_type == 'jacket':
+            selected_cloth_type = '🧥 Jacket'
+        elif selected_cloth_type == 'coat':
+            selected_cloth_type = '🥼 Coat'
+        elif selected_cloth_type == 'hoodie':
+            selected_cloth_type = '🧥 Hoodie'
+
+        st.success('Successfully uploaded 1 file!')
     else:
         st.info('Upload an image, or enter the clothe details manually to continue.')
 
@@ -567,19 +542,47 @@ def add_clothe_item():
         if st.button('Submit', type='primary', width='stretch'):
             local_email = st.session_state.get('local_user')
 
-            added = False
             if has_uploaded_files:
-                added = addclothemedia(uploaded_files, clean_item_name, local_email)
-            else:
-                added = addclothemanual(
-                    clean_item_name,
-                    selected_cloth_type,
-                    manual_color,
-                    local_email,
-                )
+                file = uploaded_files
+                image_data = file.getvalue()
+                item_id = None
 
-            if added:
-                st.rerun()
+                if local_email:
+                    item_id = add_clothing_item(
+                        email=local_email,
+                        item_name=clean_item_name,
+                        image_data=image_data,
+                    )
+
+                category = _add_item_to_catalog(
+                    name=clean_item_name,
+                    cloth_type=selected_cloth_type,
+                    image=image_data,
+                    item_id=item_id,
+                    conf=category_conf,
+                )
+                st.session_state.wardrobe_feedback = f'**Added 1 item to {category}.**'
+            else:
+                item_id = None
+                if local_email:
+                    item_id = add_clothing_item(
+                        email=local_email,
+                        item_name=clean_item_name,
+                        cloth_type=selected_cloth_type,
+                        color=manual_color,
+                        wardrobe_category=CATEGORY_BY_CLOTH_TYPE.get(
+                            selected_cloth_type, 'Accessories ⌚'
+                        ),
+                    )
+                category = _add_item_to_catalog(
+                    name=clean_item_name,
+                    cloth_type=selected_cloth_type,
+                    color=manual_color,
+                    item_id=item_id,
+                )
+                st.session_state.wardrobe_feedback = f'**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**'
+
+            st.rerun()
 
 
 def _default_catalog():
@@ -625,7 +628,7 @@ categories = list(st.session_state.catalog.keys())
 
 
 # --- Top bar: Title + Action Buttons ---
-st.markdown('<h1 class="wardrobe-title">👗 My Wardrobe</h1>', unsafe_allow_html=True)
+st.title('👗 My Wardrobe')
 st.divider()
 
 feedback_message = st.session_state.pop('wardrobe_feedback', None)
