@@ -269,8 +269,11 @@ def _display_weather():
             except Exception:
                 pass
     if location:
+        weather_progress = st.progress(0, text='Loading weather panel...')
         try:
+            weather_progress.progress(25, text='Fetching latest weather data...')
             bundle = fetch_weather_bundle(location[0], location[1])
+            weather_progress.progress(65, text='Preparing weather panel...')
             cur = bundle.get('current', {})
             main = cur.get('main', {})
             weather = cur.get('weather', [{}])[0]
@@ -301,8 +304,11 @@ def _display_weather():
                 )
                 st.write(f'**Humidity**: {main.get("humidity", "N/A")}%')
                 st.write(f'**Wind**: {cur.get("wind", {}).get("speed", "N/A")} m/s')
+            weather_progress.progress(100, text='Weather panel ready')
         except Exception as e:
             st.warning(f'Unable to fetch weather: {e}')
+        finally:
+            weather_progress.empty()
     else:
         st.info("No location provided. Click 'Set location' to open the Location page.")
 
@@ -438,3 +444,21 @@ if __name__ == '__main__':
         with rightcol:
             with st.container(border=True):
                 _display_weather()
+
+            with st.container(border=True):
+                st.subheader('AI Stylist')
+                st.caption(
+                    'Get an outfit recommendation using your current weather and wardrobe.'
+                )
+                if st.button(
+                    'Suggest Outfit with AI',
+                    key='dashboard_ai_stylist',
+                    type='primary',
+                    width='stretch',
+                    icon='✨',
+                ):
+                    st.session_state.llm_prefill_prompt = (
+                        'Suggest an outfit based on my current weather and my wardrobe. '
+                        'Give one best outfit and one backup option.'
+                    )
+                    st.switch_page('LLM.py')

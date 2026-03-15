@@ -39,6 +39,7 @@ pages = {
         st.Page('wardrobe.py', title='Wardrobe', icon='👗'),
         st.Page('weather.py', title='Weather', icon='🌦️'),
         st.Page('location.py', title='Location', icon='🎈'),
+        st.Page('LLM.py', title='AI Stylist', icon='✨'),
         st.Page('../webcamintegration.py', title='Webcam', icon='📷'),
     ],
     'Account': [
