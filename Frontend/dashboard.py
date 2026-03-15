@@ -3,7 +3,6 @@ from Authentication import is_authenticated, login_screen
 import base64
 from data_backend import get_user_location, get_user_catalog
 from openweatherapi import fetch_weather_bundle
-from weather import WeatherChartFactory
 
 # use wide layout so panels have more room
 st.set_page_config(layout='wide')
@@ -70,6 +69,25 @@ def _add_item_to_catalog(name, cloth_type, image=None, color=None):
         }
     )
     return category
+
+
+def _description_emoji(description):
+    desc = str(description or "").lower()
+    if "thunder" in desc:
+        return "⛈️"
+    if "rain" in desc or "drizzle" in desc:
+        return "🌧️"
+    if "snow" in desc:
+        return "❄️"
+    if "mist" in desc or "fog" in desc or "haze" in desc:
+        return "🌫️"
+    if "overcast" in desc:
+        return "☁️"
+    if "cloud" in desc:
+        return "⛅"
+    if "clear" in desc:
+        return "☀️"
+    return "🌤️"
 
 
 # Defining functions to display weather and wardrobe widgets
@@ -194,7 +212,7 @@ def _display_weather():
                 desc_text = (
                     weather.get('main') or weather.get('description') or ''
                 ).strip()
-                emoji = WeatherChartFactory._description_emoji(desc_text)
+                emoji = _description_emoji(desc_text)
             except Exception:
                 emoji = ''
 
