@@ -132,7 +132,7 @@ with center:
         <div class="about-hero">
             <h1>Meet Taylr 🪡</h1>
             <h3>Your Personal Wardrobe Architect</h3>
-            <p><strong>Stop saying "I have nothing to wear."</strong> Taylr helps you rediscover your closet and dress smarter every day.</p>
+            <p><strong>Stop saying "I have nothing to wear."</strong><br>Taylr helps you rediscover your closet and dress smarter every day.</p>
             <div class="hero-chips">
                 <span class="hero-chip">👗 Closet Sync</span>
                 <span class="hero-chip">🌦️ Weather Smart</span>
