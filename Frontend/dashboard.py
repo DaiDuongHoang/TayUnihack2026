@@ -269,8 +269,11 @@ def _display_weather():
             except Exception:
                 pass
     if location:
+        weather_progress = st.progress(0, text='Loading weather panel...')
         try:
+            weather_progress.progress(25, text='Fetching latest weather data...')
             bundle = fetch_weather_bundle(location[0], location[1])
+            weather_progress.progress(65, text='Preparing weather panel...')
             cur = bundle.get('current', {})
             main = cur.get('main', {})
             weather = cur.get('weather', [{}])[0]
@@ -301,8 +304,11 @@ def _display_weather():
                 )
                 st.write(f'**Humidity**: {main.get("humidity", "N/A")}%')
                 st.write(f'**Wind**: {cur.get("wind", {}).get("speed", "N/A")} m/s')
+            weather_progress.progress(100, text='Weather panel ready')
         except Exception as e:
             st.warning(f'Unable to fetch weather: {e}')
+        finally:
+            weather_progress.empty()
     else:
         st.info("No location provided. Click 'Set location' to open the Location page.")
 
