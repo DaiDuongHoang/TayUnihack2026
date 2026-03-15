@@ -3,6 +3,7 @@ import pycountry
 import geonamescache
 from Authentication import is_authenticated, login_screen
 from data_backend import get_user_location, save_user_location
+from database import DEFAULT_LOCATION
 
 if not is_authenticated():
     login_screen(
@@ -168,15 +169,17 @@ def get_cities(country):
 
 # Session state
 countries = get_countries()
-local_user = st.session_state.get("local_user")
-DEFAULT_COUNTRY = "Australia"
-DEFAULT_CITY = "Melbourne"
+# any authenticated email: local or Google
+user_email = st.session_state.get("local_user") or getattr(st.user, "email", None)
+
+# defaults from database
+DEFAULT_COUNTRY, DEFAULT_CITY = DEFAULT_LOCATION[0], DEFAULT_LOCATION[1]
 
 if "location_owner" not in st.session_state:
     st.session_state.location_owner = None
 
-if st.session_state.location_owner != local_user:
-    stored_location = get_user_location(local_user) if local_user else None
+if st.session_state.location_owner != user_email:
+    stored_location = get_user_location(user_email) if user_email else None
     default_country = DEFAULT_COUNTRY if DEFAULT_COUNTRY in countries else countries[0]
     default_city = ""
 
@@ -195,7 +198,7 @@ if st.session_state.location_owner != local_user:
     st.session_state.city = default_city
     st.session_state.saved_country = default_country
     st.session_state.saved_city = default_city
-    st.session_state.location_owner = local_user
+    st.session_state.location_owner = user_email
 
 if "country" not in st.session_state:
     st.session_state.country = (
@@ -253,9 +256,10 @@ st.markdown("")
 if st.button("**Save Changes**", width='stretch', type="primary"):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
-    if local_user:
+    save_email = st.session_state.get("local_user") or getattr(st.user, "email", None)
+    if save_email:
         save_user_location(
-            local_user,
+            save_email,
             st.session_state.saved_country,
             st.session_state.saved_city,
         )
