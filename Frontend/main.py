@@ -41,7 +41,7 @@ pages = {
         st.Page('location.py', title='Location', icon='🎈'),
     ],
     'Account': [
-        st.Page('profile.py', title='Profile', icon='👤'),
+        st.Page('user_profile.py', title='Profile', icon='👤'),
     ],
 }
 
