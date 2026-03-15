@@ -346,6 +346,122 @@ def _set_catalog_item(old_category, item_index, updated_item, new_category):
         st.session_state.catalog[new_category].insert(0, merged_item)
 
 
+def _format_predicted_cloth_type(raw_label: str | None) -> str | None:
+    if not raw_label:
+        return None
+    normalized = raw_label.strip().lower()
+    mapping = {
+        't-shirt': '👕 T-Shirt',
+        'shirt': '👕 Shirt',
+        'sweater': '🧶 Sweater',
+        'dress': '👗 Dress',
+        'shorts': '👖 Shorts',
+        'skirt': '👗 Skirt',
+        'jeans': '👖 Jeans',
+        'pants': '👖 Pants',
+        'blazer': '🧥 Blazer',
+        'jacket': '🧥 Jacket',
+        'coat': '🥼 Coat',
+        'hoodie': '🧥 Hoodie',
+    }
+    return mapping.get(normalized, raw_label)
+
+
+def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bool:
+    """Add a clothing item from uploaded media using CV classification."""
+    try:
+        from ultralytics import YOLO
+    except ModuleNotFoundError:
+        st.error('Image auto-detection is unavailable (ultralytics not installed).')
+        return False
+
+    current_path = os.path.dirname(__file__)
+    parent_path = os.path.dirname(current_path)
+    color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
+    category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
+
+    if not os.path.exists(color_cls_path) or not os.path.exists(category_cls_path):
+        st.error('Model files are missing. Please check the models folder.')
+        return False
+
+    image_data = uploaded_file.getvalue()
+    file_bytes = np.asarray(bytearray(image_data), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    if img is None:
+        st.error('Could not read image. Please upload a valid file.')
+        return False
+
+    color_model = YOLO(str(color_cls_path))
+    category_model = YOLO(str(category_cls_path))
+
+    color_pred = color_model.predict(source=img, device='cpu')
+    top1_color_idx = int(color_pred[0].probs.top1)
+    predicted_color = color_model.names[top1_color_idx]
+
+    category_pred = category_model.predict(source=img, device='cpu')
+    top1_cat_idx = int(category_pred[0].probs.top1)
+    category_conf = float(category_pred[0].probs.top1conf)
+    raw_cloth_type = str(category_model.names[top1_cat_idx])
+    selected_cloth_type = _format_predicted_cloth_type(raw_cloth_type)
+
+    if category_conf < 0.75:
+        selected_cloth_type = None
+
+    item_id = None
+    if local_email:
+        item_id = add_clothing_item(
+            email=local_email,
+            item_name=item_name,
+            image_data=image_data,
+        )
+
+    category = _add_item_to_catalog(
+        name=item_name,
+        cloth_type=selected_cloth_type,
+        image=image_data,
+        color=predicted_color,
+        item_id=item_id,
+        conf=category_conf,
+    )
+    st.session_state.wardrobe_feedback = f'**Added 1 item to {category}.**'
+    return True
+
+
+def addclothemanual(
+    item_name: str,
+    selected_cloth_type: str | None,
+    manual_color: str | None,
+    local_email: str | None,
+) -> bool:
+    """Add a clothing item manually using name, type, and color."""
+    if not selected_cloth_type or not manual_color:
+        st.error('Please select clothe type and color.')
+        return False
+
+    item_id = None
+    if local_email:
+        item_id = add_clothing_item(
+            email=local_email,
+            item_name=item_name,
+            cloth_type=selected_cloth_type,
+            color=manual_color,
+            wardrobe_category=CATEGORY_BY_CLOTH_TYPE.get(
+                selected_cloth_type, 'Accessories ⌚'
+            ),
+        )
+
+    category = _add_item_to_catalog(
+        name=item_name,
+        cloth_type=selected_cloth_type,
+        color=manual_color,
+        item_id=item_id,
+    )
+    st.session_state.wardrobe_feedback = (
+        f'**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**'
+    )
+    return True
+
+
 @st.dialog('Edit wardrobe item')
 def _edit_wardrobe_item(category, item_index, local_user):
     item = st.session_state.catalog[category][item_index]
@@ -448,69 +564,9 @@ def add_clothe_item():
     manual_color = None
 
     if has_uploaded_files:
-        try:
-            from ultralytics import YOLO
-        except ModuleNotFoundError:
-            st.error('Image auto-detection is unavailable (ultralytics not installed).')
-            st.info('Remove the upload and enter item details manually.')
-            return
-
-        current_path = os.path.dirname(__file__)
-        parent_path = os.path.dirname(current_path)
-        color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
-        category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
-
-        if not os.path.exists(color_cls_path) or not os.path.exists(category_cls_path):
-            st.error('Model files are missing. Please check the models folder.')
-            return
-
-        color_model = YOLO(str(color_cls_path))
-        category_model = YOLO(str(category_cls_path))
-
         file = uploaded_files
-        file_bytes = np.asarray(bytearray(file.getvalue()), dtype=np.uint8)
-        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
         st.image(file, caption=file.name)
-
-        color_pred = color_model.predict(source=img, device='cpu')
-        top1_color_idx = int(color_pred[0].probs.top1)
-        manual_color = color_model.names[top1_color_idx]
-
-        category_pred = category_model.predict(source=img, device='cpu')
-        top1_cat_idx = int(category_pred[0].probs.top1)
-        selected_cloth_type = category_model.names[top1_cat_idx]
-        category_conf = float(category_pred[0].probs.top1conf)
-
-        if category_conf < 0.75:
-            selected_cloth_type = None
-
-        # Re-tag the predicted cloth type with emoji for better UI display
-        if selected_cloth_type == 't-shirt':
-            selected_cloth_type = '👕 T-Shirt'
-        elif selected_cloth_type == 'shirt':
-            selected_cloth_type = '👕 Shirt'
-        elif selected_cloth_type == 'sweater':
-            selected_cloth_type = '🧶 Sweater'
-        elif selected_cloth_type == 'dress':
-            selected_cloth_type = '👗 Dress'
-        elif selected_cloth_type == 'shorts':
-            selected_cloth_type = '👖 Shorts'
-        elif selected_cloth_type == 'skirt':
-            selected_cloth_type = '👗 Skirt'
-        elif selected_cloth_type == 'jeans':
-            selected_cloth_type = '👖 Jeans'
-        elif selected_cloth_type == 'pants':
-            selected_cloth_type = '👖 Pants'
-        elif selected_cloth_type == 'blazer':
-            selected_cloth_type = '🧥 Blazer'
-        elif selected_cloth_type == 'jacket':
-            selected_cloth_type = '🧥 Jacket'
-        elif selected_cloth_type == 'coat':
-            selected_cloth_type = '🥼 Coat'
-        elif selected_cloth_type == 'hoodie':
-            selected_cloth_type = '🧥 Hoodie'
-
-        st.success('Successfully uploaded 1 file!')
+        st.info('Image will be analysed with computer vision when you click Submit.')
     else:
         st.info('Upload an image, or enter the clothe details manually to continue.')
 
@@ -538,47 +594,19 @@ def add_clothe_item():
         if st.button('Submit', type='primary', width='stretch'):
             local_email = st.session_state.get('local_user')
 
+            added = False
             if has_uploaded_files:
-                file = uploaded_files
-                image_data = file.getvalue()
-                item_id = None
-
-                if local_email:
-                    item_id = add_clothing_item(
-                        email=local_email,
-                        item_name=clean_item_name,
-                        image_data=image_data,
-                    )
-
-                category = _add_item_to_catalog(
-                    name=clean_item_name,
-                    cloth_type=selected_cloth_type,
-                    image=image_data,
-                    item_id=item_id,
-                    conf=category_conf,
-                )
-                st.session_state.wardrobe_feedback = f'**Added 1 item to {category}.**'
+                added = addclothemedia(uploaded_files, clean_item_name, local_email)
             else:
-                item_id = None
-                if local_email:
-                    item_id = add_clothing_item(
-                        email=local_email,
-                        item_name=clean_item_name,
-                        cloth_type=selected_cloth_type,
-                        color=manual_color,
-                        wardrobe_category=CATEGORY_BY_CLOTH_TYPE.get(
-                            selected_cloth_type, 'Accessories ⌚'
-                        ),
-                    )
-                category = _add_item_to_catalog(
-                    name=clean_item_name,
-                    cloth_type=selected_cloth_type,
-                    color=manual_color,
-                    item_id=item_id,
+                added = addclothemanual(
+                    clean_item_name,
+                    selected_cloth_type,
+                    manual_color,
+                    local_email,
                 )
-                st.session_state.wardrobe_feedback = f'**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**'
 
-            st.rerun()
+            if added:
+                st.rerun()
 
 
 def _default_catalog():
