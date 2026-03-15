@@ -50,12 +50,13 @@ css = """
 """
 st.html(css)
 
-# Gradient box for "About Us" title
-with st.container(key="gradient-box"):
-    st.markdown("# About Taylr 🪡🧵")
+# Gradient box for "About Us" title (use the styled gradient box and center text)
+st.markdown('<div class="st-key-gradient-box"><h1>About Taylr 🪡🧵</h1></div>', unsafe_allow_html=True)
 
 # Normal body text for description
 with st.container(key="description-box"):
+    # Add vertical space between title and description
+    st.space(12)
     st.markdown("""
 Taylr is a personal wardrobe assistant that helps you manage your clothing items, plan outfits, and get weather-based recommendations.
 

@@ -75,7 +75,7 @@ class MockWeatherRepository:
         return self.weather_descriptions[offset % 3]
 
     def get_location_label(self) -> str:
-        return "Melbourne, AU"
+        return "Not set"
 
 
 class OpenWeatherRepository:
@@ -84,8 +84,8 @@ class OpenWeatherRepository:
     def __init__(
         self,
         fallback_repository: MockWeatherRepository,
-        locality: str = "Melbourne",
-        country: str = "AU",
+        locality: str = "",
+        country: str = "",
     ) -> None:
         self.fallback_repository = fallback_repository
         self.locality = locality
@@ -100,6 +100,11 @@ class OpenWeatherRepository:
         self.used_fallback = False
         self.error_message = ""
 
+        if not str(self.locality).strip() and not str(self.country).strip():
+            self._set_fallback("Location is not set.")
+            self.raw_forecast_rows = []
+            return []
+
         try:
             weather_bundle = fetch_weather_bundle(self.locality, self.country)
             payload = weather_bundle["forecast"]
@@ -107,6 +112,12 @@ class OpenWeatherRepository:
             self.timezone_offset_seconds = int(weather_bundle.get("timezone_offset", 0))
         except Exception as exc:
             self._set_fallback(f"OpenWeather request failed: {exc}")
+
+            error_text = str(exc).lower()
+            if "could not find location" in error_text or "not found" in error_text:
+                self.raw_forecast_rows = []
+                return []
+
             return self.fallback_repository.get_hourly_forecast(hours=hours)
 
         items = payload.get("list", [])
@@ -278,6 +289,8 @@ class OpenWeatherRepository:
         }
 
     def get_location_label(self) -> str:
+        if not self.locality and not self.country:
+            return "Not set"
         if self.country:
             return f"{self.locality}, {self.country}"
         return str(self.locality)
@@ -490,13 +503,19 @@ class WeatherPage:
                 1, max(0, int(st.session_state.weather_chart_day_offset))
             )
 
-        location_label = "Melbourne, AU"
+        location_label = "Not set"
         if hasattr(self.weather_repository, "get_location_label"):
             location_label = self.weather_repository.get_location_label()
 
         self._render_styles()
         self._render_header(location_label)
         self._render_data_source_notice()
+        if not all_hourly_rows:
+            if location_label.lower() == "not set":
+                st.info("Location is not set. Go to the Location page and save your location to view live weather.")
+            else:
+                st.warning("No weather data available for the selected location. Please verify and save a valid location.")
+            return
         self._render_metrics(next_24_rows)
         self._render_large_forecast_chart(
             all_hourly_rows, location_label, raw_hourly_rows
@@ -508,9 +527,9 @@ class WeatherPage:
         saved_country = str(st.session_state.get("saved_country", "")).strip()
 
         # Normalize placeholder values coming from UI summary fields.
-        if saved_city.lower() in {"n/a", "na", "none", "null"}:
+        if saved_city.lower() in {"n/a", "na", "none", "null", "not set", "unset"}:
             saved_city = ""
-        if saved_country.lower() in {"n/a", "na", "none", "null"}:
+        if saved_country.lower() in {"n/a", "na", "none", "null", "not set", "unset"}:
             saved_country = ""
 
         if saved_city:
@@ -524,8 +543,8 @@ class WeatherPage:
             target_locality = saved_country
             target_country = ""
         else:
-            target_locality = "Melbourne"
-            target_country = "AU"
+            target_locality = ""
+            target_country = ""
 
         # Compare against what was actually last fetched, not the freshly-constructed
         # repository defaults, so day-navigation reruns never bust the cache.
@@ -558,7 +577,7 @@ class WeatherPage:
     def _to_country_code(self, country_name_or_code: str) -> str:
         country = country_name_or_code.strip()
         if not country:
-            return "AU"
+            return ""
 
         if len(country) == 2 and country.isalpha():
             return country.upper()
@@ -576,6 +595,21 @@ class WeatherPage:
         cache_key = "weather_cached_rows"
         meta_key = "weather_cached_meta"
         force_refresh = bool(st.session_state.pop("weather_force_refresh", False))
+
+        if not str(getattr(self.weather_repository, "locality", "")).strip() and not str(
+            getattr(self.weather_repository, "country", "")
+        ).strip():
+            st.session_state.pop(cache_key, None)
+            st.session_state.pop("weather_cached_raw_rows", None)
+            st.session_state[meta_key] = {
+                "used_fallback": False,
+                "error_message": "Location is not set.",
+                "last_synced_at": None,
+                "timezone_offset_seconds": 0,
+                "locality": "",
+                "country": "",
+            }
+            return []
 
         if cache_key in st.session_state and not force_refresh:
             cached_offset = st.session_state.get(meta_key, {}).get(
@@ -962,6 +996,22 @@ class WeatherPage:
         error_message = str(meta.get("error_message", "Unknown error"))
         last_synced_at = meta.get("last_synced_at")
         error_text = error_message.lower()
+
+        if "location is not set" in error_text:
+            st.info("No location saved yet. Save a location to load live weather.")
+            sync_col, refresh_col = st.columns([8, 1], vertical_alignment="center")
+            with sync_col:
+                st.caption("Last synced: Not synced yet")
+            with refresh_col:
+                st.button(
+                    "🔄",
+                    key="refresh_weather_button",
+                    width='content',
+                    help="Refresh live weather",
+                    type="primary",
+                    on_click=self._request_weather_refresh,
+                )
+            return
 
         if used_fallback:
             if "could not find location" in error_text:
@@ -1387,8 +1437,8 @@ class WeatherPage:
 fallback_repository = MockWeatherRepository()
 weather_repository = OpenWeatherRepository(
     fallback_repository=fallback_repository,
-    locality="Melbourne",
-    country="AU",
+    locality="",
+    country="",
 )
 
 weather_page = WeatherPage(weather_repository=weather_repository)
