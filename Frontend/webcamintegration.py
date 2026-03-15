@@ -1,9 +1,14 @@
 import os
 import threading
 import streamlit as st
-import cv2
+from PIL import Image
 from datetime import datetime
 from wardrobe import addclothemedia
+
+try:
+    import cv2
+except Exception:
+    cv2 = None
 
 css = """
 <style>
@@ -177,14 +182,24 @@ def capture_frame(frame):
     filename = f'captured_frame_{current_time}.jpg'
     save_path = os.path.join(save_dir, filename)
 
-    success = cv2.imwrite(save_path, frame_to_save)
+    if cv2 is not None:
+        success = cv2.imwrite(save_path, frame_to_save)
+    else:
+        try:
+            rgb_image = frame_to_save[:, :, ::-1]
+            Image.fromarray(rgb_image).save(save_path, format='JPEG')
+            success = True
+        except Exception:
+            success = False
+
     st.toast(f'✅ Saved: {save_path}' if success else f'❌ imwrite failed: {save_path}')
     if success:
         st.image(frame_to_save, caption='Captured Frame', use_column_width=True)
         local_email = st.session_state.get('local_user')
-        clean_item_name = filename.strip(".*jpg|jpeg|png|webp")
+        clean_item_name = filename.strip('.*jpg|jpeg|png|webp')
 
         addclothemedia(frame_to_save, clean_item_name, local_email)
+
 
 st.set_page_config(page_title='Webcam Stream', layout='wide')
 

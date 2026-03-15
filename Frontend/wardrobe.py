@@ -1,9 +1,10 @@
 import streamlit as st
 import numpy as np
-import cv2
 import os
 import re
+from io import BytesIO
 from pathlib import Path
+from PIL import Image
 from Authentication import is_authenticated, login_screen
 from data_backend import (
     add_clothing_item,
@@ -11,6 +12,11 @@ from data_backend import (
     get_user_catalog,
     update_clothing_item,
 )
+
+try:
+    import cv2
+except Exception:
+    cv2 = None
 
 
 CLOTH_TYPE_OPTIONS = [
@@ -289,7 +295,9 @@ def _is_stale_media_id(value: object) -> bool:
     return bool(re.fullmatch(r'[0-9a-f]{40,64}\.(jpg|jpeg|png|webp)', text))
 
 
-def _add_item_to_catalog(name, cloth_type, image=None, color=None, item_id=None, conf=None):
+def _add_item_to_catalog(
+    name, cloth_type, image=None, color=None, item_id=None, conf=None
+):
     _ensure_catalog_categories()
 
     if conf is not None and conf < 0.75:
@@ -362,8 +370,16 @@ def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bo
         return False
 
     image_data = uploaded_file
-    file_bytes = np.asarray(bytearray(image_data), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    if cv2 is not None:
+        file_bytes = np.asarray(bytearray(image_data), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    else:
+        try:
+            pil_img = Image.open(BytesIO(image_data)).convert('RGB')
+            img = np.array(pil_img)
+        except Exception:
+            img = None
+
     if img is None:
         st.error('Could not read image. Please upload a valid file.')
         return False
@@ -404,8 +420,12 @@ def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bo
     return True
 
 
-def addclothemanual(item_name: str, selected_cloth_type: str | None,
-                    manual_color: str | None, local_email: str | None) -> bool:
+def addclothemanual(
+    item_name: str,
+    selected_cloth_type: str | None,
+    manual_color: str | None,
+    local_email: str | None,
+) -> bool:
     """Add a clothing item manually using name, type, and color."""
     if not selected_cloth_type or not manual_color:
         st.error('Please select clothe type and color.')
