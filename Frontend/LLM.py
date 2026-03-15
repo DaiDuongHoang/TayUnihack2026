@@ -283,6 +283,32 @@ st.markdown(
         color: #475569;
     }
 
+    .ai-icon-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.8rem;
+    }
+
+    .ai-chip {
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 999px;
+        padding: 0.22rem 0.58rem;
+        font-size: 0.78rem;
+        color: #334155;
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    .ai-stat {
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(255, 255, 255, 0.92);
+        padding: 0.48rem 0.65rem;
+        color: #334155;
+        font-size: 0.88rem;
+        margin-top: 0.35rem;
+    }
+
     div[data-testid="stForm"],
     div[data-testid="stAlert"],
     div[data-testid="stVerticalBlock"] {
@@ -307,8 +333,13 @@ st.markdown(
 st.markdown(
     """
     <div class="ai-hero">
-      <h2>AI Stylist</h2>
+            <h2>✨ AI Stylist</h2>
       <p>Weather-aware outfit recommendations built from your own wardrobe.</p>
+            <div class="ai-icon-row">
+                <span class="ai-chip">👗 Wardrobe</span>
+                <span class="ai-chip">🌦️ Weather</span>
+                <span class="ai-chip">🧠 Gemini</span>
+            </div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -325,19 +356,27 @@ finally:
     clear_loading_overlay(page_overlay_slot, page_overlay_started_at)
 
 st.caption(f'Loaded {len(items)} wardrobe item(s) for recommendations.')
+st.markdown(
+    f'<div class="ai-stat">🧺 Wardrobe items ready: <strong>{len(items)}</strong></div>',
+    unsafe_allow_html=True,
+)
 if temp_now is not None:
     st.caption(f'Current detected temperature: {temp_now:.1f}C')
+    st.markdown(
+        f'<div class="ai-stat">🌡️ Current temperature context: <strong>{temp_now:.1f}C</strong></div>',
+        unsafe_allow_html=True,
+    )
 
 quick_left, quick_mid, quick_right = st.columns(3)
-if quick_left.button('Work / Office Look', key='llm_q_work', width='stretch'):
+if quick_left.button('💼 Work / Office Look', key='llm_q_work', width='stretch'):
     st.session_state.llm_prefill_prompt = (
         'Suggest a work-ready outfit using my wardrobe and current weather.'
     )
-if quick_mid.button('Casual Weekend', key='llm_q_casual', width='stretch'):
+if quick_mid.button('🧢 Casual Weekend', key='llm_q_casual', width='stretch'):
     st.session_state.llm_prefill_prompt = (
         'Suggest a casual weekend outfit from my wardrobe for current weather.'
     )
-if quick_right.button('Layering Plan', key='llm_q_layer', width='stretch'):
+if quick_right.button('🧥 Layering Plan', key='llm_q_layer', width='stretch'):
     st.session_state.llm_prefill_prompt = (
         'Suggest a layered outfit option from my wardrobe for current weather.'
     )
@@ -352,4 +391,5 @@ if user_input:
     with st.spinner('Generating outfit suggestions...'):
         suggestion = get_clothing_suggestion(user_input, items)
     st.toast('Outfit suggestion ready ✨')
+    st.markdown('### 🪄 Suggested Looks')
     st.markdown(suggestion)
