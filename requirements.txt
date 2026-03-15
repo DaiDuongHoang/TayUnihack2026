@@ -58,6 +58,7 @@ setuptools==82.0.1
 six==1.17.0
 smmap==5.0.3
 streamlit==1.55.0
+streamlit-geolocation
 sympy==1.14.0
 tenacity==9.1.4
 threadpoolctl==3.6.0
