@@ -44,6 +44,7 @@ pages = {
     ],
     'Account': [
         st.Page('user_profile.py', title='Profile', icon='👤'),
+        st.Page('about.py', title='About', icon='ℹ️'),
     ],
 }
 
