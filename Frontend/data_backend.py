@@ -8,7 +8,26 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 _database = importlib.import_module("database")
-add_clothing_item = _database.add_clothing_item
+
+
+def add_clothing_item(
+    email: str,
+    item_name: str,
+    cloth_type: str | None = None,
+    color: str | None = None,
+    image_data: bytes | None = None,
+    wardrobe_category: str | None = None,
+) -> int:
+    return _database.add_clothing_item(
+        email=email,
+        item_name=item_name,
+        cloth_type=cloth_type,
+        color=color,
+        image_data=image_data,
+        wardrobe_category=wardrobe_category,
+    )
+
+
 get_user_catalog = _database.get_user_catalog
 get_user_location = _database.get_user_location
 get_user_profile = _database.get_user_profile

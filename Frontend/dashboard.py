@@ -15,6 +15,10 @@ CLOTH_TYPE_OPTIONS = [
     "👗 Skirt",
     "👖 Jeans",
     "👖 Pants",
+    "🧢 Hat",
+    "🕶️ Sunglasses",
+    "🧣 Scarf",
+    "🧤 Gloves",
 ]
 
 CATEGORY_BY_CLOTH_TYPE = {
@@ -29,6 +33,10 @@ CATEGORY_BY_CLOTH_TYPE = {
     "🧥 Jacket": "Outerwear 🧥",
     "🥼 Coat": "Outerwear 🧥",
     "🧥 Hoodie": "Outerwear 🧥",
+    "🧢 Hat": "Accessories ⌚",
+    "🕶️ Sunglasses": "Accessories ⌚",
+    "🧣 Scarf": "Accessories ⌚",
+    "🧤 Gloves": "Accessories ⌚",
 }
 
 
@@ -106,7 +114,7 @@ def add_clothe_item():
 
     if upload_entry_ready or manual_entry_ready:
         if st.button("Submit", type="primary", use_container_width=True):
-            local_user = st.session_state.get("local_user")
+            local_email = st.session_state.get("local_user")
 
             if has_uploaded_files:
                 category = None
@@ -122,14 +130,14 @@ def add_clothe_item():
                         cloth_type=None,
                         image=image_data,
                     )
-                    if local_user:
+                    if local_email:
                         add_clothing_item(
-                            username=local_user,
+                            email=local_email,
                             item_name=uploaded_item_name,
                             image_data=image_data,
                         )
                 st.session_state.wardrobe_feedback = (
-                    f"Added {len(uploaded_files)} item(s) to {category}."
+                    f"**Added {len(uploaded_files)} item(s) to {category}.**"
                 )
             else:
                 category = _add_item_to_catalog(
@@ -137,15 +145,15 @@ def add_clothe_item():
                     cloth_type=selected_cloth_type,
                     color=manual_color,
                 )
-                if local_user:
+                if local_email:
                     add_clothing_item(
-                        username=local_user,
+                        email=local_email,
                         item_name=clean_item_name,
                         cloth_type=selected_cloth_type,
                         color=manual_color,
                         wardrobe_category=category,
                     )
-                st.session_state.wardrobe_feedback = f"Added {_plain_cloth_type_name(selected_cloth_type)} to {category}."
+                st.session_state.wardrobe_feedback = f"**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**"
 
             st.rerun()
 

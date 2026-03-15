@@ -1,7 +1,9 @@
 import streamlit as st
 from Authentication import is_authenticated, login_screen
 from data_backend import get_user_catalog
-from mainPage import add_clothe_item
+from dashboard import add_clothe_item
+
+danger_delete_button = None
 
 if not is_authenticated():
     login_screen(
@@ -27,25 +29,24 @@ st.html("""
 
 /* Apply to all buttons */
 div[data-testid="stButton"] button {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Apply to bordered column/grid boxes */
 div[data-testid="stColumn"] {
-    animation: slideFadeDown 0.4s ease forwards;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
 div[data-testid="stColumn"]:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-10px) scale(1.01);
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.20);
 }
 
 /* Apply to horizontal divider */
 div[data-testid="stDivider"] {
-    animation: slideFadeDown 0.4s ease 0.3s forwards;
-    opacity: 0; /* Start hidden until animation runs */
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
 }
 
 /* Stagger for buttons */
@@ -62,8 +63,8 @@ div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
 
 /* Keep hover effect on buttons */
 div[data-testid="stButton"] button:hover {
-    transform: translateY(-3px) scale(1.07);
-    box-shadow: 0px 10px 22px rgba(0, 0, 0, 0.28);
+    transform: translateY(-5px) scale(1.11);
+    box-shadow: 0px 18px 36px rgba(0, 0, 0, 0.36);
 }
 
 /* Dedicated animation for the Go Back button */
@@ -108,15 +109,54 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* Apply slideFadeDown animation to st.success (alert elements) */
+/* Delete button — danger pulse idle + shake on hover */
+@keyframes deleteDangerPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0);
+        border-color: rgba(239, 68, 68, 0.28);
+    }
+    50% {
+        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0.18);
+        border-color: rgba(239, 68, 68, 0.65);
+    }
+}
+
+@keyframes deleteShake {
+    0%   { transform: translateX(0) scale(1.04); }
+    25%  { transform: translateX(-2px) scale(1.05); }
+    50%  { transform: translateX(2px) scale(1.06); }
+    75%  { transform: translateX(-1px) scale(1.05); }
+    100% { transform: translateX(0) scale(1.04); }
+}
+
+[class*="st-key-del"] button {
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               deleteDangerPulse 2.0s ease-in-out 0.7s infinite !important;
+    border: 1.5px solid rgba(239, 68, 68, 0.32) !important;
+    color: #dc2626 !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease,
+                background 0.18s ease, border-color 0.18s ease !important;
+}
+
+[class*="st-key-del"] button:hover {
+    animation: deleteShake 0.42s ease-in-out infinite !important;
+    box-shadow: 0 14px 34px rgba(239, 68, 68, 0.55) !important;
+    background: rgba(254, 226, 226, 0.88) !important;
+    border-color: rgba(239, 68, 68, 0.75) !important;
+    color: #b91c1c !important;
+}
+
+/* Apply slideFadeDown animation to st.success (alert elements) */
 div[data-testid="stAlert"] {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: slideFadeDown 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 div[data-testid="stAlert"]:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-6px);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.14);
 }
+
 </style>
 """)
 
@@ -171,7 +211,12 @@ st.divider()
 
 feedback_message = st.session_state.pop("wardrobe_feedback", None)
 if feedback_message:
-    st.success(feedback_message)
+    if feedback_message == "Item deleted.":
+        st.toast("**Item deleted**", icon="❌", duration="short")
+    elif "Added " in feedback_message:
+        st.toast(feedback_message, icon="✅", duration="short")
+    else:
+        st.success(feedback_message)
 
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
@@ -245,3 +290,36 @@ else:
                                 unsafe_allow_html=True,
                             )
                             st.caption(f"Color: {color}")
+
+                        item_index = i + j
+
+                        def _delete_item(idx=item_index):
+                            st.session_state.catalog[
+                                st.session_state.selected_category
+                            ].pop(idx)
+                            st.session_state.wardrobe_feedback = "Item deleted."
+                            st.rerun()
+
+                        delete_key = (
+                            f"del_{st.session_state.selected_category}_{item_index}"
+                        )
+                        if danger_delete_button is not None:
+                            danger_delete_button(
+                                key=delete_key,
+                                data={
+                                    "start": "Hold to Delete",
+                                    "continue": "Keep holding...",
+                                    "completed": "Deleted",
+                                },
+                                on_confirmed_change=_delete_item,
+                                width="content",
+                            )
+                        else:
+                            if st.button(
+                                "Delete",
+                                key=f"{delete_key}_fallback",
+                                type="secondary",
+                                icon="🗑️",
+                                use_container_width=True,
+                            ):
+                                _delete_item()

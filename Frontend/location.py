@@ -118,30 +118,12 @@ div[data-testid="stAlert"]:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
-
-/* Compact centered save notification */
-.saved-pill {
-    display: table;
-    margin: 0.5rem auto 0;
-    padding: 0.35rem 0.85rem;
-    border-radius: 999px;
-    font-size: 0.84rem;
-    font-weight: 600;
-    color: #065f46;
-    background: #d1fae5;
-    border: 1px solid #86efac;
-    animation: slideFadeDown 0.35s ease forwards;
-}
 </style>
 """)
 
-st.set_page_config(page_title="Global Location Dashboard", layout="wide")
-
 st.title("🗺️ My Location")
 
-# ==========================================
 # Load country + city data
-# ==========================================
 gc = geonamescache.GeonamesCache()
 cities_data = gc.get_cities()
 
@@ -175,9 +157,7 @@ for country_name in country_to_cities:
     country_to_cities[country_name] = sorted(list(country_to_cities[country_name]))
 
 
-# ==========================================
 # Helper
-# ==========================================
 def get_countries():
     return all_countries
 
@@ -186,9 +166,7 @@ def get_cities(country):
     return country_to_cities.get(country, [])
 
 
-# ==========================================
 # Session state
-# ==========================================
 countries = get_countries()
 local_user = st.session_state.get("local_user")
 
@@ -229,9 +207,7 @@ if "saved_country" not in st.session_state:
 if "saved_city" not in st.session_state:
     st.session_state.saved_city = st.session_state.city
 
-# ==========================================
 # UI
-# ==========================================
 col1, col2 = st.columns(2)
 
 # Country
@@ -274,14 +250,12 @@ if st.button("**Save Changes**", use_container_width=True, type="primary"):
             st.session_state.saved_country,
             st.session_state.saved_city,
         )
-    st.markdown(
-        "<div class='saved-pill'>✅ Location saved!</div>",
-        unsafe_allow_html=True,
-    )
+    st.session_state.location_saved_toast = True
 
-# ==========================================
+if st.session_state.pop("location_saved_toast", False):
+    st.toast("**Location saved!**", icon="✅", duration="short")
+
 # Summary (STREAMLIT VERSION)
-# ==========================================
 
 st.divider()
 
