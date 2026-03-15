@@ -4,6 +4,54 @@ import streamlit as st
 import cv2
 from datetime import datetime
 
+css = """
+<style>
+/* Gradient box container */
+.st-key-gradient-box {
+    background: linear-gradient(90deg, #1a1a2e, #16213e, #0f3460);
+    color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+.st-key-gradient-box h1 {
+    color: white !important;
+    font-size: 2.5rem;
+    margin: 0;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.05s both;
+}
+
+/* Description container */
+.st-key-description-box {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.2s both;
+}
+
+/* Target text elements inside description box */
+.st-key-description-box p,
+.st-key-description-box li,
+.st-key-description-box strong {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
+}
+
+@keyframes fadeSlideDownSettle {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(4px);   /* subtle slide UP past resting point */
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);     /* settles back to natural position */
+    }
+}
+</style>
+"""
+st.html(css)
+
 try:
     import av
     from streamlit_webrtc import VideoProcessorBase, WebRtcMode, webrtc_streamer
