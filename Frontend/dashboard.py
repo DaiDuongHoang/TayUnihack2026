@@ -1,6 +1,14 @@
+from turtle import right
+
 import streamlit as st
 from Authentication import is_authenticated, login_screen
-from data_backend import add_clothing_item
+import base64
+
+# use wide layout so panels have more room
+st.set_page_config(layout="wide")
+from data_backend import add_clothing_item, get_user_location, get_user_catalog
+from openweatherapi import fetch_weather_bundle
+from weather import WeatherChartFactory
 
 
 CLOTH_TYPE_OPTIONS = [
@@ -64,6 +72,129 @@ def _add_item_to_catalog(name, cloth_type, image=None, color=None):
         }
     )
     return category
+
+
+# Defining functions to display weather and wardrobe widgets
+
+def _load_catalog_if_missing():
+    if "catalog" not in st.session_state:
+        local = st.session_state.get("local_user")
+        if local:
+            try:
+                st.session_state.catalog = get_user_catalog(local)
+            except Exception:
+                st.session_state.catalog = {}
+        else:
+            st.session_state.catalog = {}
+
+
+def _display_wardrobe_preview():
+    _load_catalog_if_missing()
+    catalog = st.session_state.get("catalog", {})
+    items = []
+    for cat, entries in catalog.items():
+        for it in entries:
+            if isinstance(it, dict):
+                items.append({
+                    "name": it.get("name", "Unnamed"),
+                    "image": it.get("image"),
+                    "color": it.get("color"),
+                    "category": cat,
+                })
+            else:
+                name, image = it
+                items.append({"name": name, "image": image, "color": None, "category": cat})
+
+    st.subheader("Wardrobe Preview")
+    if not items:
+        st.info("No wardrobe items available to preview.")
+        return
+
+    per_row = 3
+    for i in range(0, len(items), per_row):
+        cols = st.columns(per_row, gap="small")
+        for j, col in enumerate(cols):
+            idx = i + j
+            if idx >= len(items):
+                break
+            item = items[idx]
+            with col:
+                name = item.get("name")
+                img = item.get("image")
+                color = item.get("color")
+                category = item.get("category")
+
+                # prepare image or color block as HTML
+                img_html = ""
+                if img:
+                    try:
+                        if isinstance(img, (bytes, bytearray)):
+                            b64 = base64.b64encode(img).decode("utf-8")
+                            img_html = f'<img src="data:image/png;base64,{b64}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;"/>'
+                        else:
+                            img_html = f'<img src="{img}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;"/>'
+                    except Exception:
+                        img_html = '<div style="width:100%;height:140px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:8px;">(image)</div>'
+                elif color:
+                    img_html = f'<div style="width:100%;height:140px;border-radius:8px;background:{color};border:1px solid rgba(0,0,0,0.06);"></div>'
+
+                card_html = f'''<div style="border-radius:12px;padding:10px;border:1px solid rgba(0,0,0,0.06);box-shadow:0 6px 18px rgba(0,0,0,0.06);">\
+                    <div style=\"font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">{name}</div>\
+                    {img_html}\
+                    <div style=\"margin-top:8px;color:#6b7280;font-size:0.9rem;\">{category}</div>\
+                </div>'''
+
+                st.markdown(card_html, unsafe_allow_html=True)
+
+
+def _display_weather():
+    local = st.session_state.get("local_user")
+
+    # --- Weather ---
+    location = None
+    if local:
+        try:
+            loc = get_user_location(local)
+            location = (loc.get("city", ""), loc.get("country", ""))
+        except Exception:
+            location = None
+
+    if not location:
+        # let user enter a location if not found
+        city = st.text_input("Enter city for weather", value="")
+        country = st.text_input("Country (optional)", value="")
+        if city:
+            location = (city, country)
+
+    if location:
+        try:
+            bundle = fetch_weather_bundle(location[0], location[1])
+            cur = bundle.get("current", {})
+            main = cur.get("main", {})
+            weather = cur.get("weather", [{}])[0]
+
+            # compute emoji for header from weather description
+            try:
+                desc_text = (weather.get('main') or weather.get('description') or '').strip()
+                emoji = WeatherChartFactory._description_emoji(desc_text)
+            except Exception:
+                emoji = ''
+
+            st.subheader(f"Weather Panel {emoji}")
+
+
+            cols = st.columns([1, 2])
+            with cols[0]:
+                st.metric("Temp (°C)", f"{main.get('temp', 'N/A')}")
+                st.caption(bundle.get("location", ""))
+            with cols[1]:
+                st.markdown(f"**{weather.get('main', '')}** — {weather.get('description', '')}")
+                st.write(f"**Humidity**: {main.get('humidity', 'N/A')}%")
+                st.write(f"**Wind**: {cur.get('wind', {}).get('speed', 'N/A')} m/s")
+        except Exception as e:
+            st.warning(f"Unable to fetch weather: {e}")
+    else:
+        st.info("No location provided for weather.")
 
 
 @st.dialog("Add a new clothe item")
@@ -172,3 +303,16 @@ if __name__ == "__main__":
         st.caption(
             "Your account is ready. Use the sidebar to manage wardrobe, weather, and location."
         )
+        
+        # ------ Creates 2 columns ----------
+        leftcol, rightcol = st.columns([0.65, 0.35], gap="medium")
+
+        with leftcol:
+            with st.container(border=True):
+            
+                _display_wardrobe_preview()
+
+
+        with rightcol:
+            with st.container(border=True):
+                _display_weather()
