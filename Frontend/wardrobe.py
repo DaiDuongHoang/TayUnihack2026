@@ -437,7 +437,16 @@ def add_clothe_item():
     if has_uploaded_files:
         for file in uploaded_files:
             st.image(file, caption=file.name)
-            
+            pred = color_model.predict(source=file)
+            clothe_color = pred[0]
+            top_1_idx = int(pred.probs.top1)
+            manual_color = color_model.names[top_1_idx]
+
+            pred = category_model.predict(source=file)
+            clothe_category = pred[0]
+            top_1_idx = int(pred.probs.top1)
+            selected_cloth_type = category_model.names[top_1_idx]
+
         st.success(f'Successfully uploaded {len(uploaded_files)} file(s)!')
     else:
         st.info('Upload an image, or enter the clothe details manually to continue.')
@@ -485,7 +494,7 @@ def add_clothe_item():
 
                     category = _add_item_to_catalog(
                         name=uploaded_item_name,
-                        cloth_type=None,
+                        cloth_type=selected_cloth_type,
                         image=image_data,
                         item_id=item_id,
                     )
