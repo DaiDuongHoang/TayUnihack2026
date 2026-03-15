@@ -537,6 +537,13 @@ div[data-testid="stAlert"]:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
+
+/* Sidebar remains static (no animations) */
+section[data-testid="stSidebar"] * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+}
 </style>
 """)
 
