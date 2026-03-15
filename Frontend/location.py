@@ -170,25 +170,56 @@ def get_cities(country):
 # Session state
 countries = get_countries()
 # any authenticated email: local or Google
-user_email = st.session_state.get("local_user") or getattr(st.user, "email", None)
+raw_user_email = st.session_state.get("local_user") or getattr(st.user, "email", None)
+user_email = str(raw_user_email or "").strip().lower() or None
 
 # defaults from database
 DEFAULT_COUNTRY, DEFAULT_CITY = DEFAULT_LOCATION[0], DEFAULT_LOCATION[1]
 
+
+def _is_legacy_default_location(country: str, city: str) -> bool:
+    return country.strip() == DEFAULT_COUNTRY and city.strip() == DEFAULT_CITY
+
 if "location_owner" not in st.session_state:
     st.session_state.location_owner = None
 
-if st.session_state.location_owner != user_email:
+if "location_explicitly_saved" not in st.session_state:
+    st.session_state.location_explicitly_saved = False
+
+if st.session_state.get("location_owner") != user_email:
+    st.session_state.location_explicitly_saved = False
+
+required_keys = (
+    "country",
+    "city",
+    "saved_country",
+    "saved_city",
+    "location_explicitly_saved",
+)
+needs_bootstrap = (
+    st.session_state.get("location_owner") != user_email
+    or any(key not in st.session_state for key in required_keys)
+)
+
+if needs_bootstrap:
     stored_location = get_user_location(user_email) if user_email else None
+    stored_country = (stored_location or {}).get("country", "").strip()
+    stored_city = (stored_location or {}).get("city", "").strip()
+    has_stored_values = bool(stored_country or stored_city)
+    legacy_default_saved = _is_legacy_default_location(stored_country, stored_city)
+    has_saved_location = has_stored_values and not legacy_default_saved
+
     default_country = DEFAULT_COUNTRY if DEFAULT_COUNTRY in countries else countries[0]
     default_city = ""
 
-    if stored_location and stored_location["country"] in countries:
-        default_country = stored_location["country"]
+    if has_saved_location and stored_country in countries:
+        default_country = stored_country
+        has_saved_location = True
 
     default_cities = get_cities(default_country)
-    if stored_location and stored_location["city"] in default_cities:
-        default_city = stored_location["city"]
+    if has_saved_location and stored_city in default_cities:
+        default_city = stored_city
+        has_saved_location = True
     elif DEFAULT_CITY in default_cities:
         default_city = DEFAULT_CITY
     elif default_cities:
@@ -196,8 +227,9 @@ if st.session_state.location_owner != user_email:
 
     st.session_state.country = default_country
     st.session_state.city = default_city
-    st.session_state.saved_country = default_country
-    st.session_state.saved_city = default_city
+    st.session_state.saved_country = default_country if has_saved_location else ""
+    st.session_state.saved_city = default_city if has_saved_location else ""
+    st.session_state.location_explicitly_saved = has_saved_location
     st.session_state.location_owner = user_email
 
 if "country" not in st.session_state:
@@ -214,10 +246,20 @@ if "city" not in st.session_state:
         st.session_state.city = cities[0] if cities else ""
 
 if "saved_country" not in st.session_state:
-    st.session_state.saved_country = st.session_state.country
+    st.session_state.saved_country = ""
 
 if "saved_city" not in st.session_state:
-    st.session_state.saved_city = st.session_state.city
+    st.session_state.saved_city = ""
+
+if (
+    not st.session_state.get("location_explicitly_saved", False)
+    and _is_legacy_default_location(
+        st.session_state.get("saved_country", ""),
+        st.session_state.get("saved_city", ""),
+    )
+):
+    st.session_state.saved_country = ""
+    st.session_state.saved_city = ""
 
 # UI
 col1, col2 = st.columns(2)
@@ -256,14 +298,24 @@ st.markdown("")
 if st.button("**Save Changes**", width='stretch', type="primary"):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
-    save_email = st.session_state.get("local_user") or getattr(st.user, "email", None)
+    st.session_state.location_explicitly_saved = True
+    save_email = user_email
+    save_ok = False
     if save_email:
-        save_user_location(
+        save_ok = save_user_location(
             save_email,
             st.session_state.saved_country,
             st.session_state.saved_city,
         )
-    st.session_state.location_saved_toast = True
+        st.session_state.location_owner = user_email
+
+    if save_ok:
+        st.session_state.location_saved_toast = True
+    elif save_email:
+        st.session_state.location_explicitly_saved = False
+        st.warning("Could not persist location right now. Please try again.")
+    else:
+        st.info("Location is stored for this session only in guest mode.")
 
 if st.session_state.pop("location_saved_toast", False):
     st.toast("**Location saved!**", icon="✅", duration="short")
@@ -280,7 +332,7 @@ with summary_container:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.metric(label="Country", value=st.session_state.saved_country or "N/A")
+        st.metric(label="Country", value=st.session_state.saved_country or "Not set")
 
     with col2:
-        st.metric(label="City/Suburb", value=st.session_state.saved_city or "N/A")
+        st.metric(label="City/Suburb", value=st.session_state.saved_city or "Not set")

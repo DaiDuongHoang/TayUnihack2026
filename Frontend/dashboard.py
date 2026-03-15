@@ -249,7 +249,10 @@ def _resolve_weather_location():
     if user_email:
         try:
             loc = get_user_location(user_email)
-            location = (loc.get('city', ''), loc.get('country', ''))
+            city = (loc or {}).get('city', '').strip()
+            country = (loc or {}).get('country', '').strip()
+            if city or country:
+                location = (city, country)
         except Exception:
             location = None
     else:
