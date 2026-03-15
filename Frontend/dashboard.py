@@ -1,6 +1,7 @@
 import streamlit as st
 from Authentication import is_authenticated, login_screen
 import base64
+import re
 from data_backend import get_user_location, get_user_catalog
 from loading_overlay import (
     show_loading_overlay,
@@ -110,6 +111,13 @@ def _load_catalog_if_missing():
             st.session_state.catalog = {}
 
 
+def _is_stale_media_id(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.strip().lower()
+    return bool(re.fullmatch(r'[0-9a-f]{40,64}\.(jpg|jpeg|png|webp)', text))
+
+
 def _display_wardrobe_preview():
     _load_catalog_if_missing()
     catalog = st.session_state.get('catalog', {})
@@ -160,6 +168,8 @@ def _display_wardrobe_preview():
             with col:
                 name = item.get('name')
                 img = item.get('image')
+                if _is_stale_media_id(img):
+                    img = None
                 color = item.get('color')
                 category = item.get('category')
 

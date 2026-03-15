@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import cv2
 import os
+import re
 from pathlib import Path
 from Authentication import is_authenticated, login_screen
 from data_backend import (
@@ -302,19 +303,28 @@ def _plain_cloth_type_name(cloth_type):
     return cloth_type.split(' ', 1)[1] if ' ' in cloth_type else cloth_type
 
 
-def _add_item_to_catalog(name, cloth_type, image=None, color=None, item_id=None, conf=None):
+def _is_stale_media_id(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.strip().lower()
+    return bool(re.fullmatch(r'[0-9a-f]{40,64}\.(jpg|jpeg|png|webp)', text))
+
+
+def _add_item_to_catalog(
+    name, cloth_type, image=None, color=None, item_id=None, conf=None
+):
     _ensure_catalog_categories()
 
     if conf is not None and conf < 0.75:
-        category = "Accessories ⌚"
+        category = 'Accessories ⌚'
     else:
-        if cloth_type in ("👕 T-Shirt", "👕 Shirt", "🧶 Sweater", "👗 Dress"):
+        if cloth_type in ('👕 T-Shirt', '👕 Shirt', '🧶 Sweater', '👗 Dress'):
             category = 'Top 👚'
-        elif cloth_type in ("👖 Shorts", "👗 Skirt", "👖 Jeans", "👖 Pants"):
+        elif cloth_type in ('👖 Shorts', '👗 Skirt', '👖 Jeans', '👖 Pants'):
             category = 'Bottom 🩳'
         else:
             category = 'Outerwear 🧥'
-    
+
     item = {
         'name': name,
         'image': image,
@@ -475,31 +485,30 @@ def add_clothe_item():
             selected_cloth_type = None
 
         # Re-tag the predicted cloth type with emoji for better UI display
-        if selected_cloth_type == "t-shirt":
+        if selected_cloth_type == 't-shirt':
             selected_cloth_type = '👕 T-Shirt'
-        elif selected_cloth_type == "shirt":
+        elif selected_cloth_type == 'shirt':
             selected_cloth_type = '👕 Shirt'
-        elif selected_cloth_type == "sweater":
+        elif selected_cloth_type == 'sweater':
             selected_cloth_type = '🧶 Sweater'
-        elif selected_cloth_type == "dress":
+        elif selected_cloth_type == 'dress':
             selected_cloth_type = '👗 Dress'
-        elif selected_cloth_type == "shorts":
+        elif selected_cloth_type == 'shorts':
             selected_cloth_type = '👖 Shorts'
-        elif selected_cloth_type == "skirt":
+        elif selected_cloth_type == 'skirt':
             selected_cloth_type = '👗 Skirt'
-        elif selected_cloth_type == "jeans":
+        elif selected_cloth_type == 'jeans':
             selected_cloth_type = '👖 Jeans'
-        elif selected_cloth_type == "pants":
+        elif selected_cloth_type == 'pants':
             selected_cloth_type = '👖 Pants'
-        elif selected_cloth_type == "blazer":
+        elif selected_cloth_type == 'blazer':
             selected_cloth_type = '🧥 Blazer'
-        elif selected_cloth_type == "jacket":
+        elif selected_cloth_type == 'jacket':
             selected_cloth_type = '🧥 Jacket'
-        elif selected_cloth_type == "coat":
+        elif selected_cloth_type == 'coat':
             selected_cloth_type = '🥼 Coat'
-        elif selected_cloth_type == "hoodie":
+        elif selected_cloth_type == 'hoodie':
             selected_cloth_type = '🧥 Hoodie'
-
 
         st.success('Successfully uploaded 1 file!')
     else:
@@ -754,10 +763,14 @@ else:
                     if isinstance(item, dict):
                         name = item.get('name', 'Unnamed Item')
                         image = item.get('image')
+                        if _is_stale_media_id(image):
+                            image = None
                         color = item.get('color')
                         cloth_type = item.get('cloth_type')
                     else:
                         name, image = item
+                        if _is_stale_media_id(image):
+                            image = None
                         color = None
                         cloth_type = None
 
