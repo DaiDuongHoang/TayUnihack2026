@@ -122,75 +122,72 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-left, center, right = st.columns([1, 2.2, 1])
+st.markdown('<div class="about-shell">', unsafe_allow_html=True)
 
-with center:
-    st.markdown('<div class="about-shell">', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="about-hero">
+        <h1>Meet Taylr 🪡</h1>
+        <h3>Your Personal Wardrobe Architect</h3>
+        <p><strong>Stop saying "I have nothing to wear."</strong><br>Taylr helps you rediscover your closet and dress smarter every day.</p>
+        <div class="hero-chips">
+            <span class="hero-chip">👗 Closet Sync</span>
+            <span class="hero-chip">🌦️ Weather Smart</span>
+            <span class="hero-chip">✨ AI Stylist</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
+st.space(10)
+
+st.markdown(
+    '**Taylr** is designed to take the guesswork out of getting dressed. By combining digital wardrobe organization with real-time weather context, it helps you make the most of the clothes you already own.'
+)
+
+st.divider()
+st.subheader('Core Features')
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
     st.markdown(
         """
-        <div class="about-hero">
-            <h1>Meet Taylr 🪡</h1>
-            <h3>Your Personal Wardrobe Architect</h3>
-            <p><strong>Stop saying "I have nothing to wear."</strong><br>Taylr helps you rediscover your closet and dress smarter every day.</p>
-            <div class="hero-chips">
-                <span class="hero-chip">👗 Closet Sync</span>
-                <span class="hero-chip">🌦️ Weather Smart</span>
-                <span class="hero-chip">✨ AI Stylist</span>
-            </div>
+        <div class="feature-card">
+            <div class="feature-icon">🧺</div>
+            <h4>Digital Closet</h4>
+            <p>Digitise your wardrobe and keep every piece searchable by category, color, and style. Skip accidental duplicate buys.</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.space(10)
-
+with c2:
     st.markdown(
-        '**Taylr** is designed to take the guesswork out of getting dressed. By combining digital wardrobe organization with real-time weather context, it helps you make the most of the clothes you already own.'
+        """
+        <div class="feature-card">
+            <div class="feature-icon">📒</div>
+            <h4>The Lookbook</h4>
+            <p>Create and save outfit combinations for workdays, events, and weekend plans so your next look is ready in seconds.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.divider()
-    st.subheader('Core Features')
+with c3:
+    st.markdown(
+        """
+        <div class="feature-card">
+            <div class="feature-icon">🧠</div>
+            <h4>Smart Suggestions</h4>
+            <p>Weather-sync recommendations help you stay comfortable and stylish, from warm afternoons to cold, rainy mornings.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    c1, c2, c3 = st.columns(3)
+st.divider()
+st.success('Built for UniHack 2026 - crafted to give every outfit a better fit.')
 
-    with c1:
-        st.markdown(
-            """
-            <div class="feature-card">
-                <div class="feature-icon">🧺</div>
-                <h4>Digital Closet</h4>
-                <p>Digitise your wardrobe and keep every piece searchable by category, color, and style. Skip accidental duplicate buys.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with c2:
-        st.markdown(
-            """
-            <div class="feature-card">
-                <div class="feature-icon">📒</div>
-                <h4>The Lookbook</h4>
-                <p>Create and save outfit combinations for workdays, events, and weekend plans so your next look is ready in seconds.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with c3:
-        st.markdown(
-            """
-            <div class="feature-card">
-                <div class="feature-icon">🧠</div>
-                <h4>Smart Suggestions</h4>
-                <p>Weather-sync recommendations help you stay comfortable and stylish, from warm afternoons to cold, rainy mornings.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.divider()
-    st.success('Built for UniHack 2026 - crafted to give every outfit a better fit.')
-
-    st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
