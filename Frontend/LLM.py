@@ -1,5 +1,6 @@
 import streamlit as st
 from google.genai import Client
+import html
 
 from Authentication import is_authenticated, is_google_logged_in, is_guest, login_screen
 from data_backend import get_user_catalog, get_user_location
@@ -214,7 +215,7 @@ def _weather_appropriate_items(
 def get_clothing_suggestion(
     user_input: str, wardrobe_items: list[dict[str, str]]
 ) -> str:
-    api_key = 'AIzaSyBVxD5A1nRWenLtAuEES0DvjjMMWEK2MuA'
+    api_key = 'AIzaSyDRrl6pMk2CBg6ujv6c3ieqBvE82nYOmNA'
     if not api_key:
         return 'Gemini API key is missing. Add GEMINI_API_KEY in Streamlit secrets.'
 
@@ -257,6 +258,53 @@ Rules:
         ).strip() or 'No suggestion generated. Please try again.'
     except Exception as exc:
         return f'Could not generate suggestions right now: {exc}'
+
+
+def _render_suggestion_flow(text: str) -> None:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        st.markdown(text)
+        return
+
+    rendered_lines = []
+    for idx, line in enumerate(lines):
+        cleaned = line.strip()
+
+        # Normalize markdown-like emphasis markers from Gemini output.
+        while cleaned.startswith('*'):
+            cleaned = cleaned[1:].strip()
+        while cleaned.endswith('*'):
+            cleaned = cleaned[:-1].strip()
+        cleaned = cleaned.replace('**', '').strip()
+
+        if not cleaned:
+            continue
+
+        if cleaned.endswith(':') and ':' not in cleaned[:-1]:
+            rendered_lines.append(
+                f'<div class="ai-flow-section" style="animation-delay:{0.08 * idx:.2f}s">{html.escape(cleaned[:-1])}</div>'
+            )
+            continue
+
+        if ':' in cleaned:
+            label, value = cleaned.split(':', 1)
+            label = html.escape(label.strip())
+            value = html.escape(value.strip())
+            rendered_lines.append(
+                f'<div class="ai-flow-item" style="animation-delay:{0.08 * idx:.2f}s"><span class="ai-flow-label">{label}</span><span class="ai-flow-value">{value}</span></div>'
+            )
+            continue
+
+        rendered_lines.append(
+            f'<div class="ai-flow-line" style="animation-delay:{0.08 * idx:.2f}s">{html.escape(cleaned)}</div>'
+        )
+
+    st.markdown(
+        '<div class="ai-flow-card"><div class="ai-flow-header">🪄 Suggested Looks</div>'
+        + ''.join(rendered_lines)
+        + '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 if not is_authenticated():
@@ -325,6 +373,92 @@ st.markdown(
         margin-top: 0.35rem;
     }
 
+    @keyframes aiFlowIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes aiTextShimmer {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+    }
+
+    .ai-flow-card {
+        margin-top: 0.65rem;
+        padding: 1rem 1rem 0.85rem;
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background:
+            radial-gradient(circle at 8% 10%, rgba(219, 234, 254, 0.7), transparent 38%),
+            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .ai-flow-header {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0.65rem;
+    }
+
+    .ai-flow-line {
+        opacity: 0;
+        animation: aiFlowIn 0.45s ease-out forwards;
+        margin-bottom: 0.52rem;
+        line-height: 1.55;
+        color: #1e293b;
+        background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f766e, #0f172a);
+        background-size: 260% 260%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation-name: aiFlowIn, aiTextShimmer;
+        animation-duration: 0.45s, 5.5s;
+        animation-timing-function: ease-out, linear;
+        animation-fill-mode: forwards, none;
+        animation-iteration-count: 1, infinite;
+    }
+
+    .ai-flow-section {
+        opacity: 0;
+        animation: aiFlowIn 0.45s ease-out forwards;
+        margin: 0.9rem 0 0.45rem;
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: 0.01em;
+    }
+
+    .ai-flow-item {
+        opacity: 0;
+        animation: aiFlowIn 0.45s ease-out forwards;
+        margin-bottom: 0.48rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(191, 219, 254, 0.8);
+        display: flex;
+        align-items: baseline;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+    }
+
+    .ai-flow-label {
+        font-weight: 700;
+        color: #1d4ed8;
+    }
+
+    .ai-flow-value {
+        color: #0f172a;
+    }
+
+    .ai-flow-bullet::before {
+        content: '✦ ';
+        color: #1d4ed8;
+        -webkit-text-fill-color: initial;
+    }
+
     div[data-testid="stForm"],
     div[data-testid="stAlert"],
     div[data-testid="stVerticalBlock"] {
@@ -368,6 +502,7 @@ try:
     catalog = _load_user_catalog()
     items = _flatten_catalog(catalog)
     temp_now = _get_current_temp_c()
+    city, country = _resolve_location()
 finally:
     clear_loading_overlay(page_overlay_slot, page_overlay_started_at)
 
@@ -381,6 +516,11 @@ if temp_now is not None:
     st.markdown(
         f'<div class="ai-stat">🌡️ Current temperature context: <strong>{temp_now:.1f}C</strong></div>',
         unsafe_allow_html=True,
+    )
+
+if not city and not country:
+    st.warning(
+        'Location is not selected yet. AI Stylist can still suggest outfits, but weather-aware recommendations may be less accurate. Set your location on the Location page first.'
     )
 
 quick_left, quick_mid, quick_right = st.columns(3)
@@ -407,5 +547,4 @@ if user_input:
     with st.spinner('Generating outfit suggestions...'):
         suggestion = get_clothing_suggestion(user_input, items)
     st.toast('Outfit suggestion ready ✨')
-    st.markdown('### 🪄 Suggested Looks')
-    st.markdown(suggestion)
+    _render_suggestion_flow(suggestion)
