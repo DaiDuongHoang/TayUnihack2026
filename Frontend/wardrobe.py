@@ -439,12 +439,12 @@ def add_clothe_item():
             st.image(file, caption=file.name)
             pred = color_model.predict(source=file)
             clothe_color = pred[0]
-            top_1_idx = int(pred.probs.top1)
+            top_1_idx = int(clothe_color.probs.top1)
             manual_color = color_model.names[top_1_idx]
 
             pred = category_model.predict(source=file)
             clothe_category = pred[0]
-            top_1_idx = int(pred.probs.top1)
+            top_1_idx = int(clothe_category.probs.top1)
             selected_cloth_type = category_model.names[top_1_idx]
 
         st.success(f'Successfully uploaded {len(uploaded_files)} file(s)!')
