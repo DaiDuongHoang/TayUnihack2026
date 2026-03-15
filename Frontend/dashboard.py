@@ -464,34 +464,49 @@ def _display_ai_stylist_panel():
 # CSS animations
 st.html("""
 <style>
-/* Slide-fade-DOWN keyframe */
-@keyframes slideFadeDown {
-    from {
+/* Shared settle animation used across pages */
+@keyframes fadeSlideDownSettle {
+    0% {
         opacity: 0;
         transform: translateY(-20px);
     }
-    to {
+    60% {
+        opacity: 1;
+        transform: translateY(4px);
+    }
+    100% {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
+.dashboard-title {
+    margin: 0;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
+}
+
 /* Apply to all buttons */
 div[data-testid="stButton"] button {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Apply to bordered column/grid boxes */
 div[data-testid="stColumn"] {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 /* Apply to horizontal divider */
 div[data-testid="stDivider"] {
-    animation: slideFadeDown 0.4s ease 0.3s forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) 0.3s both;
     opacity: 0; /* Start hidden until animation runs */
+}
+
+/* Basic text containers */
+div[data-testid="stMarkdownContainer"],
+div[data-testid="stCaptionContainer"] {
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
 }
 
 /* Stagger for buttons */
@@ -512,56 +527,22 @@ div[data-testid="stButton"] button:hover {
     box-shadow: 0px 10px 22px rgba(0, 0, 0, 0.28);
 }
 
-/* Dedicated animation for the Go Back button */
-@keyframes backButtonFloat {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-7px);
-    }
-}
-
-@keyframes backButtonWiggle {
-    0% {
-        transform: translateX(-6px) scale(1.09) rotate(0deg);
-    }
-    25% {
-        transform: translateX(-10px) scale(1.11) rotate(-2deg);
-    }
-    50% {
-        transform: translateX(-6px) scale(1.12) rotate(2deg);
-    }
-    75% {
-        transform: translateX(-10px) scale(1.11) rotate(-1deg);
-    }
-    100% {
-        transform: translateX(-6px) scale(1.09) rotate(0deg);
-    }
-}
-
-.st-key-back_button button {
-    animation: backButtonFloat 1.8s ease-in-out infinite;
-    border: 1px solid rgba(59, 130, 246, 0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
-}
-
-.st-key-back_button button:hover {
-    animation: backButtonWiggle 0.45s ease-in-out infinite;
-    box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55);
-    filter: brightness(1.14) saturate(1.2);
-}
-
 /* Apply slideFadeDown animation to st.success (alert elements) */
 div[data-testid="stAlert"] {
-    animation: slideFadeDown 0.4s ease forwards;
+    animation: fadeSlideDownSettle 0.8s cubic-bezier(0.34, 1.08, 0.64, 1) both;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 div[data-testid="stAlert"]:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Sidebar remains static (no animations) */
+section[data-testid="stSidebar"] * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
 }
 </style>
 """)
@@ -577,7 +558,10 @@ if __name__ == '__main__':
         local_user_name = st.session_state.get('local_user_name')
         google_name = getattr(st.user, 'name', '')
         display_name = local_user_name or google_name or 'there'
-        st.header(f'Welcome, {display_name}!')
+        st.markdown(
+            f'<h1 class="dashboard-title">Welcome, {display_name}!</h1>',
+            unsafe_allow_html=True,
+        )
         st.caption(
             'Your account is ready. Use the sidebar to manage wardrobe, weather, and location.'
         )
