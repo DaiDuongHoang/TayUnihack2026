@@ -146,7 +146,7 @@ with center:
     st.space(10)
 
     st.markdown(
-        'Taylr is designed to take the guesswork out of getting dressed. By combining digital wardrobe organization with real-time weather context, it helps you make the most of the clothes you already own.'
+        '**Taylr** is designed to take the guesswork out of getting dressed. By combining digital wardrobe organization with real-time weather context, it helps you make the most of the clothes you already own.'
     )
 
     st.divider()
