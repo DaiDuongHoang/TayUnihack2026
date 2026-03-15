@@ -52,9 +52,9 @@ st.set_page_config(
     page_icon='👗',
     layout='centered',
     menu_items={
-        'Get Help': 'mailto:dhoa0014@student.monash.edu',
-        'Report a bug': 'mailto:mvan0078@student.monash.edu',
-        'About': '### Wardrobe Assistant App\n Taylr is a personal wardrobe assistant that helps you manage your clothing items, plan outfits, and get weather-based recommendations. ',
+        "Get Help": "mailto:dhoa0014@student.monash.edu",
+        "Report a bug": "mailto:mvan0078@student.monash.edu",
+        "About": "## Wardrobe Assistant App\n Taylr is a personal wardrobe assistant that helps you manage your clothing items, plan outfits, and get weather-based recommendations. ",
     },
 )
 pg = st.navigation(pages)
