@@ -237,6 +237,11 @@ GUEST_DEFAULT_ITEMS = {
             'asset': 'joggers.png',
             'cloth_type': '👖 Pants',
         },
+        {
+            'name': 'Jeans',
+            'asset': 'jeans.png',
+            'cloth_type': '👖 Jeans',
+        },
     ],
     'Outerwear 🧥': [
         {
@@ -397,7 +402,7 @@ def _edit_wardrobe_item(category, item_index, local_user):
         },
         new_category=edited_category,
     )
-    st.session_state.wardrobe_feedback = f'Updated {clean_name}.'
+    st.toast(f'Updated {clean_name}. ✅')
     st.rerun()
 
 
