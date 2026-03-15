@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import streamlit as st
@@ -118,7 +118,9 @@ class OpenWeatherRepository:
             if not dt_ts:
                 continue
 
-            forecast_time = datetime.utcfromtimestamp(dt_ts) + timedelta(
+            forecast_time = datetime.fromtimestamp(dt_ts, tz=timezone.utc).replace(
+                tzinfo=None
+            ) + timedelta(
                 seconds=self.timezone_offset_seconds
             )
 
@@ -165,7 +167,8 @@ class OpenWeatherRepository:
     ) -> list[dict[str, Any]]:
         known_points = sorted(known_points, key=lambda row: row["time"])
         start_time = (
-            datetime.utcnow() + timedelta(seconds=self.timezone_offset_seconds)
+            datetime.now(timezone.utc).replace(tzinfo=None)
+            + timedelta(seconds=self.timezone_offset_seconds)
         ).replace(minute=0, second=0, microsecond=0)
         hourly_rows: list[dict[str, Any]] = []
 
@@ -261,7 +264,9 @@ class OpenWeatherRepository:
         )
 
         return {
-            "time": datetime.utcfromtimestamp(dt_ts)
+            "time": datetime.fromtimestamp(dt_ts, tz=timezone.utc).replace(
+                tzinfo=None
+            )
             + timedelta(seconds=self.timezone_offset_seconds),
             "temperature_c": round(float(main.get("temp", 0.0)), 1),
             "humidity": int(main.get("humidity", 0)),
@@ -598,7 +603,7 @@ class WeatherPage:
         offset = timedelta(
             seconds=int(getattr(self.weather_repository, "timezone_offset_seconds", 0))
         )
-        return datetime.utcnow() + offset
+        return datetime.now(timezone.utc).replace(tzinfo=None) + offset
 
     def _render_styles(self) -> None:
         st.html(
@@ -1084,7 +1089,7 @@ class WeatherPage:
 
         tomorrow_rows = [row for row in hourly_rows if row["time"].date() == tomorrow]
 
-        tab_next, tab_tomorrow = st.tabs(["Next 24 Hours", "Tomorrow"])
+        tab_next, tab_tomorrow = st.tabs(["Today", "Tomorrow"])
 
         with tab_next:
             if today_rows:

@@ -10,9 +10,6 @@ if not is_authenticated():
         description="Use Google or your local email/password account to continue.",
     )
     st.stop()
-import time
-
-LOG_DURATION_SECONDS = 3.8
 
 # CSS animations
 st.html("""
@@ -121,82 +118,8 @@ div[data-testid="stAlert"]:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
-
-/* Compact centered save notification */
-@keyframes savedPillFadeAway {
-    0% {
-        opacity: 0;
-        transform: translateY(-6px);
-        max-height: 44px;
-        margin-top: 0.5rem;
-        padding-top: 0.35rem;
-        padding-bottom: 0.35rem;
-        border-width: 1px;
-    }
-    12% {
-        opacity: 1;
-        transform: translateY(0);
-        max-height: 44px;
-        margin-top: 0.5rem;
-        padding-top: 0.35rem;
-        padding-bottom: 0.35rem;
-        border-width: 1px;
-    }
-    78% {
-        opacity: 1;
-        transform: translateY(0);
-        max-height: 44px;
-        margin-top: 0.5rem;
-        padding-top: 0.35rem;
-        padding-bottom: 0.35rem;
-        border-width: 1px;
-    }
-    100% {
-        opacity: 0;
-        transform: translateY(-4px);
-        max-height: 0;
-        margin-top: 0;
-        padding-top: 0;
-        padding-bottom: 0;
-        border-width: 0;
-    }
-}
-
-.saved-pill {
-    display: table;
-    overflow: hidden;
-    margin: 0.5rem auto 0;
-    padding: 0.35rem 0.85rem;
-    border-radius: 999px;
-    font-size: 0.84rem;
-    font-weight: 600;
-    color: #065f46;
-    background: #d1fae5;
-    border: 1px solid #86efac;
-    animation: savedPillFadeAway 3.8s ease forwards;
-}
-
-.saved-pill-wrap {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    pointer-events: none;
-    margin-top: 0.2rem;
-    margin-bottom: 0.1rem;
-}
-
-.saved-pill-wrap .saved-pill {
-    margin-top: -0.42rem;
-}
-
-.saved-pill-wrap .saved-pill:first-child {
-    margin-top: 0;
-}
 </style>
 """)
-
-st.set_page_config(page_title="Global Location Dashboard", layout="wide")
 
 st.title("🗺️ My Location")
 
@@ -284,9 +207,6 @@ if "saved_country" not in st.session_state:
 if "saved_city" not in st.session_state:
     st.session_state.saved_city = st.session_state.city
 
-if "location_saved_logs" not in st.session_state:
-    st.session_state.location_saved_logs = []
-
 # UI
 col1, col2 = st.columns(2)
 
@@ -330,32 +250,10 @@ if st.button("**Save Changes**", use_container_width=True, type="primary"):
             st.session_state.saved_country,
             st.session_state.saved_city,
         )
-    st.session_state.location_saved_logs.append(
-        {
-            "id": time.time_ns(),
-            "created_at": time.time(),
-            "message": "✅ Location saved!",
-        }
-    )
+    st.session_state.location_saved_toast = True
 
-now = time.time()
-st.session_state.location_saved_logs = [
-    log
-    for log in st.session_state.location_saved_logs
-    if now - float(log.get("created_at", 0.0)) < LOG_DURATION_SECONDS
-]
-
-if st.session_state.location_saved_logs:
-    saved_logs_html = ["<div class='saved-pill-wrap'>"]
-    for log in st.session_state.location_saved_logs:
-        age = max(0.0, now - float(log.get("created_at", now)))
-        capped_age = min(LOG_DURATION_SECONDS, age)
-        msg = str(log.get("message", "✅ Location saved!"))
-        saved_logs_html.append(
-            f"<div class='saved-pill' style='animation-delay: -{capped_age:.3f}s'>{msg}</div>"
-        )
-    saved_logs_html.append("</div>")
-    st.markdown("".join(saved_logs_html), unsafe_allow_html=True)
+if st.session_state.pop("location_saved_toast", False):
+    st.toast("**Location saved!**", icon="✅", duration="short")
 
 # Summary (STREAMLIT VERSION)
 

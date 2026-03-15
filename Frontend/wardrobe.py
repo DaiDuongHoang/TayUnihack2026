@@ -1,7 +1,7 @@
 import streamlit as st
 from Authentication import is_authenticated, login_screen
 from data_backend import get_user_catalog
-from mainPage import add_clothe_item
+from dashboard import add_clothe_item
 
 danger_delete_button = None
 
@@ -213,7 +213,7 @@ feedback_message = st.session_state.pop("wardrobe_feedback", None)
 if feedback_message:
     if feedback_message == "Item deleted.":
         st.toast("**Item deleted**", icon="❌", duration="short")
-    elif feedback_message.startswith("Added "):
+    elif "Added " in feedback_message:
         st.toast(feedback_message, icon="✅", duration="short")
     else:
         st.success(feedback_message)
