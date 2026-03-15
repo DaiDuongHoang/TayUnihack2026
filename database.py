@@ -485,6 +485,57 @@ def add_clothing_item(
         return int(cursor.lastrowid)
 
 
+def update_clothing_item(
+    email: str,
+    clothing_id: int,
+    item_name: str,
+    cloth_type: str | None = None,
+    color: str | None = None,
+    wardrobe_category: str | None = None,
+) -> bool:
+    clean_name = item_name.strip()
+    if not clean_name:
+        return False
+
+    user_id = _resolve_user_id(email)
+    resolved_category = wardrobe_category or WARDROBE_CATEGORY_BY_CLOTH_TYPE.get(
+        cloth_type, 'Accessories ⌚'
+    )
+    min_temp, max_temp = _temp_range_for_cloth_type(cloth_type)
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE clothes
+            SET item_name = ?, wardrobe_category = ?, cloth_type = ?, color = ?, min_temp = ?, max_temp = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (
+                clean_name,
+                resolved_category,
+                cloth_type,
+                color,
+                min_temp,
+                max_temp,
+                clothing_id,
+                user_id,
+            ),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def delete_clothing_item(email: str, clothing_id: int) -> bool:
+    user_id = _resolve_user_id(email)
+    with get_connection() as conn:
+        cursor = conn.execute(
+            'DELETE FROM clothes WHERE id = ? AND user_id = ?',
+            (clothing_id, user_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
 def add_new_clothes(
     user_id: int, category: str, color: str | None, img_path: str | None
 ) -> None:

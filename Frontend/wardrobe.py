@@ -1,53 +1,56 @@
 import streamlit as st
+from pathlib import Path
 from Authentication import is_authenticated, login_screen
-from data_backend import get_user_catalog
-from data_backend import add_clothing_item
-from ultralytics import YOLO
-import models
+from data_backend import (
+    add_clothing_item,
+    delete_clothing_item,
+    get_user_catalog,
+    update_clothing_item,
+)
 
 danger_delete_button = None
 
 
 CLOTH_TYPE_OPTIONS = [
-    "👕 T-Shirt",
-    "🧥 Blazer",
-    "👗 Dress",
-    "🧥 Jacket",
-    "🥼 Coat",
-    "🧥 Hoodie",
-    "🧶 Sweater",
-    "🩲 Shorts",
-    "👗 Skirt",
-    "👖 Jeans",
-    "👖 Pants",
-    "🧢 Hat",
-    "🕶️ Sunglasses",
-    "🧣 Scarf",
-    "🧤 Gloves",
+    '👕 T-Shirt',
+    '🧥 Blazer',
+    '👗 Dress',
+    '🧥 Jacket',
+    '🥼 Coat',
+    '🧥 Hoodie',
+    '🧶 Sweater',
+    '🩲 Shorts',
+    '👗 Skirt',
+    '👖 Jeans',
+    '👖 Pants',
+    '🧢 Hat',
+    '🕶️ Sunglasses',
+    '🧣 Scarf',
+    '🧤 Gloves',
 ]
 
 CATEGORY_BY_CLOTH_TYPE = {
-    "👕 T-Shirt": "Top 👚",
-    "👗 Dress": "Top 👚",
-    "🧶 Sweater": "Top 👚",
-    "🩲 Shorts": "Bottom 🩳",
-    "👗 Skirt": "Bottom 🩳",
-    "👖 Jeans": "Bottom 🩳",
-    "👖 Pants": "Bottom 🩳",
-    "🧥 Blazer": "Outerwear 🧥",
-    "🧥 Jacket": "Outerwear 🧥",
-    "🥼 Coat": "Outerwear 🧥",
-    "🧥 Hoodie": "Outerwear 🧥",
-    "🧢 Hat": "Accessories ⌚",
-    "🕶️ Sunglasses": "Accessories ⌚",
-    "🧣 Scarf": "Accessories ⌚",
-    "🧤 Gloves": "Accessories ⌚",
+    '👕 T-Shirt': 'Top 👚',
+    '👗 Dress': 'Top 👚',
+    '🧶 Sweater': 'Top 👚',
+    '🩲 Shorts': 'Bottom 🩳',
+    '👗 Skirt': 'Bottom 🩳',
+    '👖 Jeans': 'Bottom 🩳',
+    '👖 Pants': 'Bottom 🩳',
+    '🧥 Blazer': 'Outerwear 🧥',
+    '🧥 Jacket': 'Outerwear 🧥',
+    '🥼 Coat': 'Outerwear 🧥',
+    '🧥 Hoodie': 'Outerwear 🧥',
+    '🧢 Hat': 'Accessories ⌚',
+    '🕶️ Sunglasses': 'Accessories ⌚',
+    '🧣 Scarf': 'Accessories ⌚',
+    '🧤 Gloves': 'Accessories ⌚',
 }
 
 if not is_authenticated():
     login_screen(
-        title="Sign in to access your wardrobe",
-        description="Use Google or your local email/password account to continue.",
+        title='Sign in to access your wardrobe',
+        description='Use Google or your local email/password account to continue.',
     )
     st.stop()
 
@@ -200,48 +203,216 @@ div[data-testid="stAlert"]:hover {
 """)
 
 # Initialize session state
-if "selected_category" not in st.session_state:
+if 'selected_category' not in st.session_state:
     st.session_state.selected_category = None
 
 
+GUEST_ASSET_DIR = Path(__file__).resolve().parent / 'default_clothes_guest'
+GUEST_DEFAULT_ITEMS = {
+    'Top 👚': [
+        {
+            'name': 'White T-Shirt',
+            'asset': 'white t-shirt.png',
+            'cloth_type': '👕 T-Shirt',
+        },
+        {
+            'name': 'Blue Polo',
+            'asset': 'blue polo.png',
+            'cloth_type': '👕 T-Shirt',
+        },
+        {
+            'name': 'Striped Shirt',
+            'asset': 'stripped shirt.png',
+            'cloth_type': '👕 T-Shirt',
+        },
+    ],
+    'Bottom 🩳': [
+        {
+            'name': 'Chinos',
+            'asset': 'chinos.png',
+            'cloth_type': '👖 Pants',
+        },
+        {
+            'name': 'Joggers',
+            'asset': 'joggers.png',
+            'cloth_type': '👖 Pants',
+        },
+    ],
+    'Outerwear 🧥': [
+        {
+            'name': 'Denim Jacket',
+            'asset': 'Denim jacket.png',
+            'cloth_type': '🧥 Jacket',
+        },
+        {
+            'name': 'Trench Coat',
+            'asset': 'Trench coat.png',
+            'cloth_type': '🥼 Coat',
+        },
+        {
+            'name': 'Puffer Vest',
+            'asset': 'puffer vest.png',
+            'cloth_type': '🧥 Jacket',
+        },
+    ],
+    'Accessories ⌚': [
+        {
+            'name': 'Leather Belt',
+            'asset': 'Leather belt.png',
+            'cloth_type': None,
+        },
+        {
+            'name': 'Wool Scarf',
+            'asset': 'wool scarf.png',
+            'cloth_type': '🧣 Scarf',
+        },
+        {
+            'name': 'Baseball Cap',
+            'asset': 'baseball cap.png',
+            'cloth_type': '🧢 Hat',
+        },
+    ],
+}
+
+
+@st.cache_data(show_spinner=False)
+def _load_guest_asset_bytes(file_name: str) -> bytes | None:
+    asset_path = GUEST_ASSET_DIR / file_name
+    if not asset_path.exists():
+        return None
+    return asset_path.read_bytes()
+
+
 def _ensure_catalog_categories():
-    if "catalog" not in st.session_state:
+    if 'catalog' not in st.session_state:
         st.session_state.catalog = {}
 
-    for category in ("Top 👚", "Bottom 🩳", "Outerwear 🧥", "Accessories ⌚"):
+    for category in ('Top 👚', 'Bottom 🩳', 'Outerwear 🧥', 'Accessories ⌚'):
         st.session_state.catalog.setdefault(category, [])
 
 
 def _plain_cloth_type_name(cloth_type):
-    return cloth_type.split(" ", 1)[1] if " " in cloth_type else cloth_type
+    return cloth_type.split(' ', 1)[1] if ' ' in cloth_type else cloth_type
 
 
-def _add_item_to_catalog(name, cloth_type, image=None, color=None):
+def _add_item_to_catalog(name, cloth_type, image=None, color=None, item_id=None):
     _ensure_catalog_categories()
-    category = CATEGORY_BY_CLOTH_TYPE.get(cloth_type, "Accessories ⌚")
-    st.session_state.catalog[category].append(
-        {
-            "name": name,
-            "image": image,
-            "color": color,
-            "cloth_type": cloth_type,
-        }
-    )
+    category = CATEGORY_BY_CLOTH_TYPE.get(cloth_type, 'Accessories ⌚')
+    item = {
+        'name': name,
+        'image': image,
+        'color': color,
+        'cloth_type': cloth_type,
+    }
+    if item_id is not None:
+        item['id'] = item_id
+    st.session_state.catalog[category].append(item)
     return category
 
 
-@st.dialog("Add a new clothe item")
+def _set_catalog_item(old_category, item_index, updated_item, new_category):
+    existing_item = st.session_state.catalog[old_category].pop(item_index)
+    merged_item = {**existing_item, **updated_item}
+    if new_category == old_category:
+        st.session_state.catalog[old_category].insert(item_index, merged_item)
+    else:
+        st.session_state.catalog[new_category].insert(0, merged_item)
+
+
+@st.dialog('Edit wardrobe item')
+def _edit_wardrobe_item(category, item_index, local_user):
+    item = st.session_state.catalog[category][item_index]
+    current_name = str(item.get('name', ''))
+    current_color = item.get('color')
+    current_cloth_type = item.get('cloth_type')
+    has_image = bool(item.get('image'))
+    item_id = item.get('id')
+
+    with st.form(f'edit_item_{category}_{item_index}'):
+        edited_name = st.text_input('Item name', value=current_name)
+        if has_image:
+            category_options = list(st.session_state.catalog.keys())
+            edited_category = st.selectbox(
+                'Category',
+                category_options,
+                index=category_options.index(category),
+            )
+            edited_cloth_type = current_cloth_type
+            edited_color = current_color
+            st.caption(
+                'Image items keep their current image. You can rename or recategorise them.'
+            )
+        else:
+            fallback_type = (
+                current_cloth_type
+                if current_cloth_type in CLOTH_TYPE_OPTIONS
+                else CLOTH_TYPE_OPTIONS[0]
+            )
+            edited_cloth_type = st.selectbox(
+                'Clothe type',
+                CLOTH_TYPE_OPTIONS,
+                index=CLOTH_TYPE_OPTIONS.index(fallback_type),
+            )
+            edited_category = CATEGORY_BY_CLOTH_TYPE.get(
+                edited_cloth_type, 'Accessories ⌚'
+            )
+            edited_color = st.color_picker(
+                'Color',
+                value=current_color or '#94a3b8',
+                width='stretch',
+            )
+
+        submitted = st.form_submit_button(
+            'Save changes', type='primary', use_container_width=True
+        )
+
+    if not submitted:
+        return
+
+    clean_name = edited_name.strip()
+    if not clean_name:
+        st.error('Item name is required.')
+        return
+
+    if local_user and item_id is not None:
+        saved = update_clothing_item(
+            email=local_user,
+            clothing_id=int(item_id),
+            item_name=clean_name,
+            cloth_type=edited_cloth_type,
+            color=edited_color,
+            wardrobe_category=edited_category,
+        )
+        if not saved:
+            st.error('Could not update this wardrobe item.')
+            return
+
+    _set_catalog_item(
+        old_category=category,
+        item_index=item_index,
+        updated_item={
+            'name': clean_name,
+            'cloth_type': edited_cloth_type,
+            'color': edited_color,
+        },
+        new_category=edited_category,
+    )
+    st.session_state.wardrobe_feedback = f'Updated {clean_name}.'
+    st.rerun()
+
+
+@st.dialog('Add a new clothe item')
 def add_clothe_item():
     item_name = st.text_input(
-        "**Clothe Item Name**",
-        placeholder="Enter the item name",
-        help="Example: White Office Shirt, Black Wide-Leg Pants",
+        '**Clothe Item Name**',
+        placeholder='Enter the item name',
+        help='Example: White Office Shirt, Black Wide-Leg Pants',
     )
 
     uploaded_files = st.file_uploader(
-        "Upload image(s) of the clothe item",
-        type=["jpg", "jpeg", "png", "bmp"],
-        help="Supported formats: JPG, JPEG, PNG, BMP. Max file size: 10MB.",
+        'Upload image(s) of the clothe item',
+        type=['jpg', 'jpeg', 'png', 'bmp'],
+        help='Supported formats: JPG, JPEG, PNG, BMP. Max file size: 10MB.',
         accept_multiple_files=True,
     )
 
@@ -252,20 +423,20 @@ def add_clothe_item():
     if has_uploaded_files:
         for file in uploaded_files:
             st.image(file, caption=file.name)
-        st.success(f"Successfully uploaded {len(uploaded_files)} file(s)!")
+        st.success(f'Successfully uploaded {len(uploaded_files)} file(s)!')
     else:
-        st.info("Upload an image, or enter the clothe details manually to continue.")
+        st.info('Upload an image, or enter the clothe details manually to continue.')
 
         selected_cloth_type = st.selectbox(
-            "**Clothe Type**",
+            '**Clothe Type**',
             CLOTH_TYPE_OPTIONS,
             index=None,
-            placeholder="Select a clothe type",
-            help="The wardrobe category will be assigned automatically from this type.",
+            placeholder='Select a clothe type',
+            help='The wardrobe category will be assigned automatically from this type.',
         )
 
         manual_color = st.color_picker(
-            "**Color**", help="Choose the color of the clothe item", width="stretch"
+            '**Color**', help='Choose the color of the clothe item', width='stretch'
         )
 
     clean_item_name = item_name.strip()
@@ -277,82 +448,79 @@ def add_clothe_item():
     upload_entry_ready = has_uploaded_files and bool(clean_item_name)
 
     if upload_entry_ready or manual_entry_ready:
-        if st.button("Submit", type="primary", use_container_width=True):
-            local_email = st.session_state.get("local_user")
+        if st.button('Submit', type='primary', use_container_width=True):
+            local_email = st.session_state.get('local_user')
 
             if has_uploaded_files:
                 category = None
                 for index, file in enumerate(uploaded_files, start=1):
                     uploaded_item_name = clean_item_name
                     if len(uploaded_files) > 1:
-                        uploaded_item_name = f"{clean_item_name} {index}"
+                        uploaded_item_name = f'{clean_item_name} {index}'
 
                     image_data = file.getvalue()
+                    item_id = None
+
+                    if local_email:
+                        item_id = add_clothing_item(
+                            email=local_email,
+                            item_name=uploaded_item_name,
+                            image_data=image_data,
+                        )
 
                     category = _add_item_to_catalog(
                         name=uploaded_item_name,
                         cloth_type=None,
                         image=image_data,
+                        item_id=item_id,
                     )
-                    if local_email:
-                        add_clothing_item(
-                            email=local_email,
-                            item_name=uploaded_item_name,
-                            image_data=image_data,
-                        )
                 st.session_state.wardrobe_feedback = (
-                    f"**Added {len(uploaded_files)} item(s) to {category}.**"
+                    f'**Added {len(uploaded_files)} item(s) to {category}.**'
                 )
             else:
-                category = _add_item_to_catalog(
-                    name=clean_item_name,
-                    cloth_type=selected_cloth_type,
-                    color=manual_color,
-                )
+                item_id = None
                 if local_email:
-                    add_clothing_item(
+                    item_id = add_clothing_item(
                         email=local_email,
                         item_name=clean_item_name,
                         cloth_type=selected_cloth_type,
                         color=manual_color,
-                        wardrobe_category=category,
+                        wardrobe_category=CATEGORY_BY_CLOTH_TYPE.get(
+                            selected_cloth_type, 'Accessories ⌚'
+                        ),
                     )
-                st.session_state.wardrobe_feedback = f"**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**"
+                category = _add_item_to_catalog(
+                    name=clean_item_name,
+                    cloth_type=selected_cloth_type,
+                    color=manual_color,
+                    item_id=item_id,
+                )
+                st.session_state.wardrobe_feedback = f'**Added {_plain_cloth_type_name(selected_cloth_type)} to {category}.**'
 
             st.rerun()
 
 
 def _default_catalog():
-    return {
-        "Top 👚": [
-            ("White T-Shirt", "https://static.streamlit.io/examples/cat.jpg"),
-            ("Blue Polo", "https://static.streamlit.io/examples/dog.jpg"),
-            ("Striped Shirt", "https://static.streamlit.io/examples/owl.jpg"),
-        ],
-        "Bottom 🩳": [
-            ("Black Jeans", "https://static.streamlit.io/examples/cat.jpg"),
-            ("Chinos", "https://static.streamlit.io/examples/dog.jpg"),
-            ("Joggers", "https://static.streamlit.io/examples/owl.jpg"),
-        ],
-        "Outerwear 🧥": [
-            ("Denim Jacket", "https://static.streamlit.io/examples/cat.jpg"),
-            ("Trench Coat", "https://static.streamlit.io/examples/dog.jpg"),
-            ("Puffer Vest", "https://static.streamlit.io/examples/owl.jpg"),
-        ],
-        "Accessories ⌚": [
-            ("Leather Belt", "https://static.streamlit.io/examples/cat.jpg"),
-            ("Wool Scarf", "https://static.streamlit.io/examples/dog.jpg"),
-            ("Baseball Cap", "https://static.streamlit.io/examples/owl.jpg"),
-        ],
-    }
+    catalog = {category: [] for category in GUEST_DEFAULT_ITEMS}
+    for category, items in GUEST_DEFAULT_ITEMS.items():
+        for item in items:
+            catalog[category].append(
+                {
+                    'name': item['name'],
+                    'image': _load_guest_asset_bytes(item['asset']),
+                    'color': None,
+                    'cloth_type': item['cloth_type'],
+                }
+            )
+    return catalog
 
 
 # !!! Clothes catalogue !!!
-local_user = st.session_state.get("local_user")
-if "catalog_owner" not in st.session_state:
+local_user = st.session_state.get('local_user')
+if 'catalog_owner' not in st.session_state:
     st.session_state.catalog_owner = None
 
-if "catalog" not in st.session_state or st.session_state.catalog_owner != local_user:
+if 'catalog' not in st.session_state or st.session_state.catalog_owner != local_user:
     if local_user:
         st.session_state.catalog = get_user_catalog(local_user)
     else:
@@ -363,26 +531,26 @@ categories = list(st.session_state.catalog.keys())
 
 
 # --- Top bar: Title + Action Buttons ---
-st.title("👗 My Wardrobe")
+st.title('👗 My Wardrobe')
 st.divider()
 
-feedback_message = st.session_state.pop("wardrobe_feedback", None)
+feedback_message = st.session_state.pop('wardrobe_feedback', None)
 if feedback_message:
-    if feedback_message == "Item deleted.":
-        st.toast("**Item deleted**", icon="❌", duration="short")
-    elif "Added " in feedback_message:
-        st.toast(feedback_message, icon="✅", duration="short")
+    if feedback_message == 'Item deleted.':
+        st.toast('**Item deleted**', icon='❌', duration='short')
+    elif 'Added ' in feedback_message:
+        st.toast(feedback_message, icon='✅', duration='short')
     else:
         st.success(feedback_message)
 
 # --- Category Grid (2x2) ---
 if st.session_state.selected_category is None:
     if st.button(
-        "Add Item",
-        key="add_item_button",
-        type="primary",
+        'Add Item',
+        key='add_item_button',
+        type='primary',
         use_container_width=True,
-        icon="➕",
+        icon='➕',
     ):
         add_clothe_item()
 
@@ -392,10 +560,10 @@ if st.session_state.selected_category is None:
 
     for i, category in enumerate(categories):
         with grid[i]:
-            st.markdown(f"### {category}")
-            st.write(f"{len(st.session_state.catalog[category])} item(s)")
+            st.markdown(f'### {category}')
+            st.write(f'{len(st.session_state.catalog[category])} item(s)')
             if st.button(
-                f"Open {category}", key=f"cat_{category}", use_container_width=True
+                f'Open {category}', key=f'cat_{category}', use_container_width=True
             ):
                 st.session_state.selected_category = category
                 st.rerun()
@@ -403,10 +571,10 @@ if st.session_state.selected_category is None:
 # --- Clothing Grid ---
 else:
     if st.button(
-        "**Go Back**",
-        key="back_button",
-        type="primary",
-        icon="⬅️",
+        '**Go Back**',
+        key='back_button',
+        type='primary',
+        icon='⬅️',
     ):
         st.session_state.selected_category = None
         st.rerun()
@@ -415,7 +583,7 @@ else:
     items = st.session_state.catalog[st.session_state.selected_category]
 
     if not items:
-        st.info("No items in this category yet. Use ➕ to add some!")
+        st.info('No items in this category yet. Use ➕ to add some!')
     else:
         num_cols = 3
         for i in range(0, len(items), num_cols):
@@ -424,59 +592,87 @@ else:
                 if i + j < len(items):
                     item = items[i + j]
                     if isinstance(item, dict):
-                        name = item.get("name", "Unnamed Item")
-                        image = item.get("image")
-                        color = item.get("color")
-                        cloth_type = item.get("cloth_type")
+                        name = item.get('name', 'Unnamed Item')
+                        image = item.get('image')
+                        color = item.get('color')
+                        cloth_type = item.get('cloth_type')
                     else:
                         name, image = item
                         color = None
                         cloth_type = None
 
                     with col:
-                        st.markdown(f"#### {name}")
+                        st.markdown(f'#### {name}')
 
                         if cloth_type:
                             st.caption(cloth_type)
 
                         if image:
-                            st.image(image, width="content")
+                            st.image(image, width='content')
                         elif color:
                             st.markdown(
                                 f"<div style='width: 100%; height: 180px; border-radius: 0.75rem; background: {color}; border: 1px solid rgba(0, 0, 0, 0.08);'></div>",
                                 unsafe_allow_html=True,
                             )
-                            st.caption(f"Color: {color}")
+                            st.caption(f'Color: {color}')
 
                         item_index = i + j
 
+                        if st.button(
+                            'Edit',
+                            key=f'edit_{st.session_state.selected_category}_{item_index}',
+                            type='secondary',
+                            use_container_width=True,
+                        ):
+                            _edit_wardrobe_item(
+                                st.session_state.selected_category,
+                                item_index,
+                                local_user,
+                            )
+
                         def _delete_item(idx=item_index):
+                            item_to_remove = st.session_state.catalog[
+                                st.session_state.selected_category
+                            ][idx]
+                            item_id = (
+                                item_to_remove.get('id')
+                                if isinstance(item_to_remove, dict)
+                                else None
+                            )
+                            if local_user and item_id is not None:
+                                deleted = delete_clothing_item(local_user, int(item_id))
+                                if not deleted:
+                                    st.session_state.wardrobe_feedback = (
+                                        'Could not delete item.'
+                                    )
+                                    st.rerun()
+                                    return
                             st.session_state.catalog[
                                 st.session_state.selected_category
                             ].pop(idx)
-                            st.session_state.wardrobe_feedback = "Item deleted."
+                            st.session_state.wardrobe_feedback = 'Item deleted.'
                             st.rerun()
 
                         delete_key = (
-                            f"del_{st.session_state.selected_category}_{item_index}"
+                            f'del_{st.session_state.selected_category}_{item_index}'
                         )
                         if danger_delete_button is not None:
                             danger_delete_button(
                                 key=delete_key,
                                 data={
-                                    "start": "Hold to Delete",
-                                    "continue": "Keep holding...",
-                                    "completed": "Deleted",
+                                    'start': 'Hold to Delete',
+                                    'continue': 'Keep holding...',
+                                    'completed': 'Deleted',
                                 },
                                 on_confirmed_change=_delete_item,
-                                width="content",
+                                width='content',
                             )
                         else:
                             if st.button(
-                                "Delete",
-                                key=f"{delete_key}_fallback",
-                                type="secondary",
-                                icon="🗑️",
+                                'Delete',
+                                key=f'{delete_key}_fallback',
+                                type='secondary',
+                                icon='🗑️',
                                 use_container_width=True,
                             ):
                                 _delete_item()

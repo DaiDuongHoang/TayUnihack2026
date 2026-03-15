@@ -7,7 +7,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-_database = importlib.import_module("database")
+_database = importlib.import_module('database')
 
 
 def add_clothing_item(
@@ -26,6 +26,28 @@ def add_clothing_item(
         image_data=image_data,
         wardrobe_category=wardrobe_category,
     )
+
+
+def update_clothing_item(
+    email: str,
+    clothing_id: int,
+    item_name: str,
+    cloth_type: str | None = None,
+    color: str | None = None,
+    wardrobe_category: str | None = None,
+) -> bool:
+    return _database.update_clothing_item(
+        email=email,
+        clothing_id=clothing_id,
+        item_name=item_name,
+        cloth_type=cloth_type,
+        color=color,
+        wardrobe_category=wardrobe_category,
+    )
+
+
+def delete_clothing_item(email: str, clothing_id: int) -> bool:
+    return _database.delete_clothing_item(email=email, clothing_id=clothing_id)
 
 
 get_user_catalog = _database.get_user_catalog
