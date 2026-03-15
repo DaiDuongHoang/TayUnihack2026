@@ -10,6 +10,94 @@ from data_backend import add_clothing_item, get_user_location, get_user_catalog
 from openweatherapi import fetch_weather_bundle
 from weather import WeatherChartFactory
 
+# CSS animations
+st.html("""
+<style>
+/* Slide-fade-DOWN keyframe */
+@keyframes slideFadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Apply to all buttons */
+div[data-testid="stButton"] button {
+    animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Apply to bordered column/grid boxes */
+div[data-testid="stColumn"] {
+    animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Apply to horizontal divider */
+div[data-testid="stDivider"] {
+    animation: slideFadeDown 0.4s ease 0.3s forwards;
+    opacity: 0; /* Start hidden until animation runs */
+}
+
+/* Stagger for buttons */
+div[data-testid="stButton"]:nth-child(1) button { animation-delay: 0.0s; }
+div[data-testid="stButton"]:nth-child(2) button { animation-delay: 0.1s; }
+div[data-testid="stButton"]:nth-child(3) button { animation-delay: 0.2s; }
+div[data-testid="stButton"]:nth-child(4) button { animation-delay: 0.3s; }
+
+/* Stagger for grid boxes */
+div[data-testid="stColumn"]:nth-child(1) { animation-delay: 0.0s; }
+div[data-testid="stColumn"]:nth-child(2) { animation-delay: 0.1s; }
+div[data-testid="stColumn"]:nth-child(3) { animation-delay: 0.2s; }
+div[data-testid="stColumn"]:nth-child(4) { animation-delay: 0.3s; }
+
+
+/* Dedicated animation for the Go Back button */
+@keyframes backButtonFloat {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-7px);
+    }
+}
+
+@keyframes backButtonWiggle {
+    0% {
+        transform: translateX(-6px) scale(1.09) rotate(0deg);
+    }
+    25% {
+        transform: translateX(-10px) scale(1.11) rotate(-2deg);
+    }
+    50% {
+        transform: translateX(-6px) scale(1.12) rotate(2deg);
+    }
+    75% {
+        transform: translateX(-10px) scale(1.11) rotate(-1deg);
+    }
+    100% {
+        transform: translateX(-6px) scale(1.09) rotate(0deg);
+    }
+}
+
+
+/* Apply slideFadeDown animation to st.success (alert elements) */
+div[data-testid="stAlert"] {
+    animation: slideFadeDown 0.4s ease forwards;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+div[data-testid="stAlert"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+</style>
+""")
 
 CLOTH_TYPE_OPTIONS = [
     "👕 T-Shirt",
@@ -185,7 +273,12 @@ def _display_weather():
 
             cols = st.columns([1, 2])
             with cols[0]:
-                st.metric("Temp (°C)", f"{main.get('temp', 'N/A')}")
+                temp_val = main.get("temp", None)
+                try:
+                    temp_text = f"{float(temp_val):.1f}"
+                except Exception:
+                    temp_text = "N/A"
+                st.metric("Temp (°C)", temp_text)
                 st.caption(bundle.get("location", ""))
             with cols[1]:
                 st.markdown(f"**{weather.get('main', '')}** — {weather.get('description', '')}")
