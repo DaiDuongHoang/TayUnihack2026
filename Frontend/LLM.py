@@ -26,16 +26,32 @@ def _load_user_catalog() -> dict[str, list[dict[str, object]]]:
     """Load wardrobe catalog from DB (local/Google) or session (guest)."""
     local_email = st.session_state.get('local_user')
     google_email = getattr(st.user, 'email', '') if is_google_logged_in() else ''
-    user_email = local_email or google_email
+    user_email = local_email or google_email or None
 
-    if user_email:
-        try:
-            return get_user_catalog(user_email)
-        except Exception:
-            pass
+    if 'catalog_owner' not in st.session_state:
+        st.session_state.catalog_owner = None
+
+    needs_refresh = (
+        'catalog' not in st.session_state
+        or st.session_state.catalog_owner != user_email
+    )
+
+    if needs_refresh:
+        if user_email:
+            try:
+                st.session_state.catalog = get_user_catalog(user_email)
+            except Exception:
+                st.session_state.catalog = {}
+        else:
+            st.session_state.catalog = st.session_state.get('catalog', {})
+
+        st.session_state.catalog_owner = user_email
 
     session_catalog = st.session_state.get('catalog')
-    return session_catalog if isinstance(session_catalog, dict) else {}
+    if isinstance(session_catalog, dict):
+        return session_catalog
+
+    return {}
 
 
 def _flatten_catalog(

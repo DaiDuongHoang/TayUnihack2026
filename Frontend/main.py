@@ -51,7 +51,7 @@ pages = {
 st.set_page_config(
     page_title='Taylr',
     page_icon='👗',
-    layout='centered',
+    layout='wide',
     menu_items={
         'Get Help': 'mailto:dhoa0014@student.monash.edu',
         'Report a bug': 'mailto:mvan0078@student.monash.edu',
