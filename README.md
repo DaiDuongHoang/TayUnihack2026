@@ -1,4 +1,4 @@
-# 👕 TayUnihack2026 – Taylr
+# 👕 Taylr
 
 ## 🧠 Inspiration
 People often choose their outfits without checking the weather conditions and may end up feeling uncomfortable or even facing health issues.  
