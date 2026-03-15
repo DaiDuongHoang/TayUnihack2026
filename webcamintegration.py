@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import time
 from datetime import datetime
+from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
 
 # ---------------------------------------------------------------------------
@@ -17,7 +18,8 @@ def webcam_stream_thread(cap, placeholder_ref, stop_event):
             time.sleep(0.05)
             continue
 
-        ret, frame = cap.read()
+        with st.session_state.cap_lock:
+            ret, frame = cap.read()
 
         if not ret or frame is None:
             grey = np.full((720, 1280, 3), 180, dtype=np.uint8)
@@ -31,6 +33,24 @@ def webcam_stream_thread(cap, placeholder_ref, stop_event):
         time.sleep(1 / 30)
 
 
+def open_camera():
+    # Try common Windows/OpenCV backends first, then fall back to default.
+    backend_candidates = [
+        cv2.CAP_DSHOW,
+        cv2.CAP_MSMF,
+        cv2.CAP_ANY,
+    ]
+
+    for backend in backend_candidates:
+        cap = cv2.VideoCapture(0, backend)
+        if cap is not None and cap.isOpened():
+            return cap
+        if cap is not None:
+            cap.release()
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Capture a single frame and save it to disk
 # ---------------------------------------------------------------------------
@@ -39,7 +59,8 @@ def capture_frame():
         st.toast("Webcam not active.")
         return
 
-    ret, frame = st.session_state.cap.read()
+    with st.session_state.cap_lock:
+        ret, frame = st.session_state.cap.read()
     if not ret or frame is None:
         st.toast("Unable to capture frame. Please check your webcam.")
         return
@@ -68,6 +89,8 @@ if "stream_thread" not in st.session_state:
     st.session_state.stream_thread = None
 if "placeholder_ref" not in st.session_state:
     st.session_state.placeholder_ref = [None]
+if "cap_lock" not in st.session_state:
+    st.session_state.cap_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # UI
@@ -104,7 +127,10 @@ with left_col:
     else:
         # Open the capture device exactly once
         if st.session_state.cap is None:
-            st.session_state.cap = cv2.VideoCapture(0)
+            st.session_state.cap = open_camera()
+            if st.session_state.cap is None:
+                st.error("Unable to open webcam. Try closing other apps using the camera.")
+                st.stop()
 
         # Start the background thread exactly once
         thread = st.session_state.stream_thread
@@ -119,6 +145,7 @@ with left_col:
                 ),
                 daemon=True,
             )
+            add_script_run_ctx(new_thread, get_script_run_ctx())
             new_thread.start()
             st.session_state.stream_thread = new_thread
 
