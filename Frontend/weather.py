@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 import html
+import time
 
 import streamlit as st
 from Authentication import is_authenticated, login_screen
@@ -574,8 +575,9 @@ class WeatherPage:
     def _load_cached_or_fetch_rows(self, hours: int) -> list[dict[str, Any]]:
         cache_key = "weather_cached_rows"
         meta_key = "weather_cached_meta"
+        force_refresh = bool(st.session_state.pop("weather_force_refresh", False))
 
-        if cache_key in st.session_state:
+        if cache_key in st.session_state and not force_refresh:
             cached_offset = st.session_state.get(meta_key, {}).get(
                 "timezone_offset_seconds", 0
             )
@@ -583,23 +585,67 @@ class WeatherPage:
                 self.weather_repository.timezone_offset_seconds = int(cached_offset)
             return st.session_state[cache_key]
 
-        rows = self.weather_repository.get_hourly_forecast(hours=hours)
-        raw_rows = list(getattr(self.weather_repository, "raw_forecast_rows", rows))
-        st.session_state[cache_key] = rows
-        st.session_state["weather_cached_raw_rows"] = raw_rows
-        st.session_state[meta_key] = {
-            "used_fallback": bool(
-                getattr(self.weather_repository, "used_fallback", False)
-            ),
-            "error_message": str(getattr(self.weather_repository, "error_message", "")),
-            "last_synced_at": getattr(self.weather_repository, "last_synced_at", None),
-            "timezone_offset_seconds": int(
-                getattr(self.weather_repository, "timezone_offset_seconds", 0)
-            ),
-            "locality": str(getattr(self.weather_repository, "locality", "")),
-            "country": str(getattr(self.weather_repository, "country", "")).upper(),
-        }
+        overlay_slot = st.empty()
+        overlay_slot.markdown(
+            """
+            <style>
+            .weather-loading-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 9998;
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                background: rgba(255, 255, 255, 0.16);
+                pointer-events: all;
+            }
+            div[data-testid="stSpinner"] {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 9999;
+                padding: 1rem 1.15rem;
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.92);
+                border: 1px solid rgba(148, 163, 184, 0.24);
+                box-shadow: 0 20px 48px rgba(15, 23, 42, 0.16);
+            }
+            </style>
+            <div class="weather-loading-overlay"></div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        spinner_slot = st.empty()
+        with spinner_slot.container():
+            with st.spinner("Loading live weather data..."):
+                rows = self.weather_repository.get_hourly_forecast(hours=hours)
+                raw_rows = list(getattr(self.weather_repository, "raw_forecast_rows", rows))
+                st.session_state[cache_key] = rows
+                st.session_state["weather_cached_raw_rows"] = raw_rows
+                st.session_state[meta_key] = {
+                    "used_fallback": bool(
+                        getattr(self.weather_repository, "used_fallback", False)
+                    ),
+                    "error_message": str(getattr(self.weather_repository, "error_message", "")),
+                    "last_synced_at": getattr(self.weather_repository, "last_synced_at", None),
+                    "timezone_offset_seconds": int(
+                        getattr(self.weather_repository, "timezone_offset_seconds", 0)
+                    ),
+                    "locality": str(getattr(self.weather_repository, "locality", "")),
+                    "country": str(getattr(self.weather_repository, "country", "")).upper(),
+                }
+                time.sleep(0.2)
+
+        spinner_slot.empty()
+        overlay_slot.empty()
         return rows
+
+    def _request_weather_refresh(self) -> None:
+        st.session_state["weather_force_refresh"] = True
+        st.session_state.pop("weather_cached_rows", None)
+        st.session_state.pop("weather_cached_meta", None)
+        st.session_state.pop("weather_cached_raw_rows", None)
 
     def _location_now(self) -> datetime:
         offset = timedelta(
@@ -953,19 +999,14 @@ class WeatherPage:
         with sync_col:
             st.caption(sync_text)
         with refresh_col:
-            refresh_clicked = st.button(
+            st.button(
                 "🔄",
                 key="refresh_weather_button",
                 width='content',
                 help="Refresh live weather",
                 type="primary",
+                on_click=self._request_weather_refresh,
             )
-
-        if refresh_clicked:
-            st.session_state.pop("weather_cached_rows", None)
-            st.session_state.pop("weather_cached_meta", None)
-            st.session_state.pop("weather_cached_raw_rows", None)
-            st.rerun()
 
     def _render_metrics(self, hourly_rows: list[dict[str, Any]]) -> None:
         current_temp = float(hourly_rows[0]["temperature_c"])
