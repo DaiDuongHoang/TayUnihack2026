@@ -12,7 +12,7 @@ FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast'
 
 
 def get_api_key() -> str:
-    apiKey = st.secrets.get('OPENWEATHER_API_KEY', '')
+    apiKey = 'f2ec9bda28d42b65e2de16b355d0ccc8'
     if not apiKey:
         raise ValueError('OpenWeather API key is not configured')
     return apiKey
