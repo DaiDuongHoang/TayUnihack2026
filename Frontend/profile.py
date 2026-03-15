@@ -2,12 +2,107 @@ import streamlit as st
 from Authentication import is_authenticated, login_screen, is_google_logged_in, is_guest
 import auth_backend
 
+
+def _inject_profile_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        @keyframes profileFadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes profileAvatarFloat {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .profile-hero {
+            animation: profileFadeUp 0.55s ease-out both;
+        }
+
+        .profile-card {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            padding: 1.2rem 1.4rem;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(239,246,255,0.94));
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+            margin-bottom: 1rem;
+            animation: profileFadeUp 0.55s ease-out both;
+        }
+
+        .profile-card:hover {
+            transform: translateY(-3px);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            box-shadow: 0 24px 44px rgba(37, 99, 235, 0.12);
+        }
+
+        .profile-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: linear-gradient(135deg,#6366f1,#8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #fff;
+            animation: profileAvatarFloat 2.8s ease-in-out infinite;
+        }
+
+        div[data-testid="stForm"],
+        div[data-testid="stAlert"],
+        div[data-testid="stHorizontalBlock"] {
+            animation: profileFadeUp 0.48s ease-out both;
+        }
+
+        div[data-testid="stForm"] {
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+        }
+
+        div[data-testid="stButton"] button,
+        div[data-testid="stFormSubmitButton"] button {
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        div[data-testid="stButton"] button:hover,
+        div[data-testid="stFormSubmitButton"] button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 if not is_authenticated():
     login_screen(
         title='Sign in to view your profile',
         description='Use Google or a local account to continue.',
     )
     st.stop()
+
+_inject_profile_styles()
 
 google_logged_in = is_google_logged_in()
 local_user = st.session_state.get('local_user')
@@ -44,13 +139,9 @@ provider_fg = '#1e40af' if provider == 'Google' else '#065f46'
 # --- Profile card ---
 st.markdown(
     f"""
-    <div style="display:flex;align-items:center;gap:1.2rem;
-                padding:1.2rem 1.4rem;border-radius:12px;
-                border:1px solid rgba(128,128,128,0.2);margin-bottom:1rem;">
-        <div style="width:64px;height:64px;border-radius:50%;flex-shrink:0;
-                    background:linear-gradient(135deg,#6366f1,#8b5cf6);
-                    display:flex;align-items:center;justify-content:center;
-                    font-size:1.6rem;font-weight:700;color:#fff;">
+    <div class="profile-hero">
+        <div class="profile-card">
+        <div class="profile-avatar">
             {initials}
         </div>
         <div>
@@ -60,6 +151,7 @@ st.markdown(
                          border-radius:999px;background:{provider_bg};color:{provider_fg};">
                 {provider}
             </span>
+        </div>
         </div>
     </div>
     """,
