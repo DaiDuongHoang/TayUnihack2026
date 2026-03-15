@@ -3,6 +3,7 @@ from google.genai import Client
 
 from Authentication import is_authenticated, is_google_logged_in, is_guest, login_screen
 from data_backend import get_user_catalog, get_user_location
+from loading_overlay import show_loading_overlay, clear_loading_overlay
 from openweatherapi import fetch_weather_bundle
 
 
@@ -313,9 +314,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-catalog = _load_user_catalog()
-items = _flatten_catalog(catalog)
-temp_now = _get_current_temp_c()
+page_overlay_slot, page_overlay_started_at = show_loading_overlay(
+    'Loading AI Stylist...'
+)
+try:
+    catalog = _load_user_catalog()
+    items = _flatten_catalog(catalog)
+    temp_now = _get_current_temp_c()
+finally:
+    clear_loading_overlay(page_overlay_slot, page_overlay_started_at)
 
 st.caption(f'Loaded {len(items)} wardrobe item(s) for recommendations.')
 if temp_now is not None:

@@ -2,35 +2,33 @@ import os
 import threading
 import streamlit as st
 import cv2
-import numpy as np
-import time
 from datetime import datetime
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
+try:
+    import av
+    from streamlit_webrtc import VideoProcessorBase, WebRtcMode, webrtc_streamer
+except ModuleNotFoundError:
+    av = None
+    VideoProcessorBase = object
+    WebRtcMode = None
+    webrtc_streamer = None
 
-# ---------------------------------------------------------------------------
-# Background thread — runs the capture loop independently of Streamlit
-# ---------------------------------------------------------------------------
-def webcam_stream_thread(cap, placeholder_ref, stop_event):
-    while not stop_event.is_set():
-        placeholder = placeholder_ref[0]
-        if placeholder is None:
-            time.sleep(0.05)
-            continue
 
-        with st.session_state.cap_lock:
-            ret, frame = cap.read()
+class SnapshotProcessor(VideoProcessorBase):
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._latest_frame = None
 
-        if not ret or frame is None:
-            grey = np.full((720, 1280, 3), 180, dtype=np.uint8)
-            cv2.putText(grey, "No signal — check your webcam",
-                        (340, 360), cv2.FONT_HERSHEY_SIMPLEX, 1, (80, 80, 80), 2)
-            placeholder.image(grey, channels="BGR", use_container_width=True)
-        else:
-            frame = cv2.resize(frame, (1280, 720))
-            placeholder.image(frame, channels="BGR", use_container_width=True)
+    def recv(self, frame):
+        img = frame.to_ndarray(format='bgr24')
+        with self._lock:
+            self._latest_frame = img.copy()
+        return av.VideoFrame.from_ndarray(img, format='bgr24')
 
-        time.sleep(1 / 30)
+    def get_latest_frame(self):
+        with self._lock:
+            return None if self._latest_frame is None else self._latest_frame.copy()
 
 
 def open_camera():
@@ -54,30 +52,26 @@ def open_camera():
 # ---------------------------------------------------------------------------
 # Capture a single frame and save it to disk
 # ---------------------------------------------------------------------------
-def capture_frame():
-    if not st.session_state.webcam_allowed or st.session_state.cap is None:
-        st.toast("Webcam not active.")
+def capture_frame(frame):
+    if frame is None:
+        st.toast('No webcam frame available yet. Start webcam first.')
         return
 
-    with st.session_state.cap_lock:
-        ret, frame = st.session_state.cap.read()
+    ret, frame = st.session_state.cap.read()
     if not ret or frame is None:
         st.toast("Unable to capture frame. Please check your webcam.")
         return
 
-    save_dir = os.path.join(os.getcwd(), "captured_frames")
+    save_dir = os.path.join(os.getcwd(), 'captured_frames')
     os.makedirs(save_dir, exist_ok=True)
-    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    save_path = os.path.join(save_dir, f"captured_frame_{current_time}.jpg")
+    current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    save_path = os.path.join(save_dir, f'captured_frame_{current_time}.jpg')
 
-    success = cv2.imwrite(save_path, frame)
-    st.toast(f"✅ Saved: {save_path}" if success else f"❌ imwrite failed: {save_path}")
+    success = cv2.imwrite(save_path, frame_to_save)
+    st.toast(f'✅ Saved: {save_path}' if success else f'❌ imwrite failed: {save_path}')
 
 
-# ---------------------------------------------------------------------------
-# Session state initialisation
-# ---------------------------------------------------------------------------
-st.set_page_config(page_title="Webcam Stream", layout="wide")
+st.set_page_config(page_title='Webcam Stream', layout='wide')
 
 if "webcam_allowed" not in st.session_state:
     st.session_state.webcam_allowed = False
@@ -89,27 +83,17 @@ if "stream_thread" not in st.session_state:
     st.session_state.stream_thread = None
 if "placeholder_ref" not in st.session_state:
     st.session_state.placeholder_ref = [None]
-if "cap_lock" not in st.session_state:
-    st.session_state.cap_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
-st.title("📷 Webcam Stream")
+st.title('📷 Webcam Stream')
 
-# Checkbox — once ticked it disables itself permanently until page reload
-allow_webcam = st.checkbox(
-    "Allow webcam",
-    value=st.session_state.webcam_allowed,
-    disabled=st.session_state.webcam_allowed,
-)
+if webrtc_streamer is None or av is None:
+    st.error('streamlit-webrtc is not installed. Run: pip install streamlit-webrtc av')
+    st.stop()
 
-# Set state immediately — NO st.rerun() so execution continues into the
-# webcam section below in the very same script run that the box was ticked
-if allow_webcam:
-    st.session_state.webcam_allowed = True
-
-st.markdown("### 🎥 Live Feed")
+st.markdown('### 🎥 Live Feed')
 left_col, right_col = st.columns([2, 1])
 
 with left_col:
@@ -127,10 +111,7 @@ with left_col:
     else:
         # Open the capture device exactly once
         if st.session_state.cap is None:
-            st.session_state.cap = open_camera()
-            if st.session_state.cap is None:
-                st.error("Unable to open webcam. Try closing other apps using the camera.")
-                st.stop()
+            st.session_state.cap = cv2.VideoCapture(0)
 
         # Start the background thread exactly once
         thread = st.session_state.stream_thread
@@ -145,11 +126,25 @@ with left_col:
                 ),
                 daemon=True,
             )
-            add_script_run_ctx(new_thread, get_script_run_ctx())
             new_thread.start()
             st.session_state.stream_thread = new_thread
 
 with right_col:
-    st.markdown("### 🛠 Controls")
-    if st.button("📸 Capture Frame"):
-        capture_frame()
+    st.markdown('### 🛠 Controls')
+    st.caption(
+        'Use Start/Stop on the webcam widget. If camera disappears, press Restart Camera.'
+    )
+
+    if st.button('🔄 Restart Camera', width='stretch'):
+        st.session_state.webcam_instance += 1
+        st.toast('Camera restarted.')
+        st.rerun()
+
+    if st.button('📸 Capture Frame'):
+        frame = None
+        if webrtc_ctx.video_processor:
+            frame = webrtc_ctx.video_processor.get_latest_frame()
+        capture_frame(frame)
+
+    if not webrtc_ctx.state.playing:
+        st.info('Camera is idle. Click Start above to begin live preview.')
