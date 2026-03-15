@@ -169,13 +169,12 @@ def get_cities(country):
 # Session state
 countries = get_countries()
 local_user = st.session_state.get("local_user")
-user_email = local_user or getattr(st.user, "email", None)
 
 if "location_owner" not in st.session_state:
     st.session_state.location_owner = None
 
-if st.session_state.location_owner != user_email:
-    stored_location = get_user_location(user_email) if user_email else None
+if st.session_state.location_owner != local_user:
+    stored_location = get_user_location(local_user) if local_user else None
     default_country = countries[0]
     default_city = ""
 
@@ -185,6 +184,8 @@ if st.session_state.location_owner != user_email:
     default_cities = get_cities(default_country)
     if stored_location and stored_location["city"] in default_cities:
         default_city = stored_location["city"]
+    elif DEFAULT_CITY in default_cities:
+        default_city = DEFAULT_CITY
     elif default_cities:
         default_city = default_cities[0]
 
@@ -195,12 +196,17 @@ if st.session_state.location_owner != user_email:
     st.session_state.location_owner = user_email
 
 if "country" not in st.session_state:
-    st.session_state.country = countries[0]
+    st.session_state.country = (
+        DEFAULT_COUNTRY if DEFAULT_COUNTRY in countries else countries[0]
+    )
 
 cities = get_cities(st.session_state.country)
 
 if "city" not in st.session_state:
-    st.session_state.city = cities[0] if cities else ""
+    if DEFAULT_CITY in cities:
+        st.session_state.city = DEFAULT_CITY
+    else:
+        st.session_state.city = cities[0] if cities else ""
 
 if "saved_country" not in st.session_state:
     st.session_state.saved_country = st.session_state.country
@@ -242,7 +248,7 @@ if selected_city != st.session_state.city:
 st.markdown("")
 
 # Save button
-if st.button("**Save Changes**", use_container_width=True, type="primary"):
+if st.button("**Save Changes**", width='stretch', type="primary"):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
     save_email = st.session_state.get("local_user") or getattr(st.user, "email", None)

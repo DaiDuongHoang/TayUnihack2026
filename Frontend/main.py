@@ -32,7 +32,7 @@ if LOGO_BIG is not None:
             st.logo(image=str(LOGO_BIG), size='large')
     else:
         st.sidebar.image(
-            str(LOGO_BIG), use_container_width=True
+            str(LOGO_BIG), width='stretch'
         )  # RUN THIS IN STREAMLIT FIRST
 
 pages = {

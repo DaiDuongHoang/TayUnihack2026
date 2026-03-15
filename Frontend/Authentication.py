@@ -299,7 +299,7 @@ def login_screen(
             password = st.text_input('Password', type='password')
             submitted = st.form_submit_button(
                 'Log in',
-                use_container_width=True,
+                width='stretch',
                 type='primary',
                 key='local_login_submit',
             )
@@ -330,7 +330,7 @@ def login_screen(
                     'Confirm new password', type='password', key='fp_confirm_pw'
                 )
                 fp_submitted = st.form_submit_button(
-                    'Reset Password', use_container_width=True
+                    'Reset Password', width='stretch'
                 )
             if fp_submitted:
                 if not fp_current_password:
@@ -350,7 +350,7 @@ def login_screen(
         st.button(
             'Log in with Google',
             on_click=st.login,
-            use_container_width=True,
+            width='stretch',
             key='google_login_button',
         )
         st.caption(
@@ -361,7 +361,7 @@ def login_screen(
         st.caption('No account? Browse without saving your data.')
         if st.button(
             'Continue as Guest',
-            use_container_width=True,
+            width='stretch',
             key='guest_login_button',
         ):
             _set_guest_session()
@@ -381,7 +381,7 @@ def login_screen(
             confirm_password = st.text_input('Confirm password', type='password')
             submitted = st.form_submit_button(
                 'Create account',
-                use_container_width=True,
+                width='stretch',
                 type='primary',
                 key='local_register_submit',
             )
@@ -408,7 +408,7 @@ def login_screen(
         st.button(
             'Sign up with Google',
             on_click=st.login,
-            use_container_width=True,
+            width='stretch',
             key='google_register_button',
         )
         st.caption(
@@ -427,7 +427,7 @@ def authenticated_view() -> None:
         st.info(
             'You are browsing as a guest. Any changes you make will not be saved after this session.'
         )
-        if st.button('Log out (Guest)', use_container_width=True):
+        if st.button('Log out (Guest)', width='stretch'):
             st.session_state.is_guest = False
             st.session_state.local_user_name = None
             st.rerun()
@@ -455,10 +455,10 @@ def authenticated_view() -> None:
     col1, col2 = st.columns(2)
     with col1:
         if google_logged_in:
-            st.button('Log out (Google)', on_click=st.logout, use_container_width=True)
+            st.button('Log out (Google)', on_click=st.logout, width='stretch')
     with col2:
         if local_user:
-            if st.button('Log out (Local)', use_container_width=True):
+            if st.button('Log out (Local)', width='stretch'):
                 st.session_state.local_user = None
                 st.session_state.local_user_name = None
                 st.rerun()
