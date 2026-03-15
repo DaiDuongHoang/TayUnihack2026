@@ -111,6 +111,10 @@ guest = is_guest()
 
 st.title('👤 Profile')
 
+pending_toast = st.session_state.pop('profile_toast_message', None)
+if pending_toast:
+    st.toast(pending_toast)
+
 # --- Guest view ---
 if guest:
     st.info(
@@ -172,7 +176,9 @@ if provider == 'Local':
             ok, msg = auth_backend.update_user_name(display_email, new_name.strip())
             if ok:
                 st.session_state.local_user_name = new_name.strip()
-                st.success(msg)
+                st.session_state.profile_toast_message = (
+                    f'Display name updated to {new_name.strip()}! ✅'
+                )
                 st.rerun()
             else:
                 st.error(msg)
