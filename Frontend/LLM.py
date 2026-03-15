@@ -1,6 +1,8 @@
 import streamlit as st
 from google.genai import Client
 import html
+import os
+from collections.abc import Mapping
 
 from Authentication import is_authenticated, is_google_logged_in, is_guest, login_screen
 from data_backend import get_user_catalog, get_user_location
@@ -216,6 +218,17 @@ def get_clothing_suggestion(
     user_input: str, wardrobe_items: list[dict[str, str]]
 ) -> str:
     api_key = st.secrets.get('GEMINI_API_KEY', '')
+    if not api_key:
+        api_section = st.secrets.get('api', {})
+        if isinstance(api_section, Mapping):
+            api_key = api_section.get('GEMINI_API_KEY', '')
+
+    if not api_key:
+        api_key = os.getenv('GEMINI_API_KEY', '')
+
+    if api_key.startswith('your_'):
+        api_key = ''
+
     if not api_key:
         return 'Gemini API key is missing. Add GEMINI_API_KEY in Streamlit secrets.'
 

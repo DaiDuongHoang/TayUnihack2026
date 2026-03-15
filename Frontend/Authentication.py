@@ -1,11 +1,52 @@
 import streamlit as st
 import importlib
 import base64
+from collections.abc import Mapping
 from pathlib import Path
 
 # Optional backend integration.
 # Update BACKEND_MODULE if your backend file uses a different module name.
 BACKEND_MODULE = 'auth_backend'
+
+
+def _is_non_placeholder(value: str) -> bool:
+    cleaned = (value or '').strip()
+    if not cleaned:
+        return False
+    return not cleaned.startswith('your_')
+
+
+def _is_google_auth_configured() -> bool:
+    auth = st.secrets.get('auth', {})
+    if not isinstance(auth, Mapping):
+        return False
+
+    redirect_uri = str(auth.get('redirect_uri', ''))
+    cookie_secret = str(auth.get('cookie_secret', ''))
+    google_cfg = auth.get('google', {})
+    if not isinstance(google_cfg, Mapping):
+        return False
+
+    client_id = str(google_cfg.get('client_id', ''))
+    client_secret = str(google_cfg.get('client_secret', ''))
+
+    return all(
+        [
+            _is_non_placeholder(redirect_uri),
+            _is_non_placeholder(cookie_secret),
+            _is_non_placeholder(client_id),
+            _is_non_placeholder(client_secret),
+        ]
+    )
+
+
+def _safe_google_login() -> None:
+    try:
+        st.login('google')
+    except Exception:
+        st.error(
+            'Google login is misconfigured. Add [auth] and [auth.google] in Streamlit secrets.'
+        )
 
 
 def load_backend_functions():
@@ -329,9 +370,7 @@ def login_screen(
                 fp_confirm_password = st.text_input(
                     'Confirm new password', type='password', key='fp_confirm_pw'
                 )
-                fp_submitted = st.form_submit_button(
-                    'Reset Password', width='stretch'
-                )
+                fp_submitted = st.form_submit_button('Reset Password', width='stretch')
             if fp_submitted:
                 if not fp_current_password:
                     st.error('Please enter your current password.')
@@ -347,15 +386,17 @@ def login_screen(
                         st.error(fp_message)
 
         st.caption('Or continue with Google')
-        st.button(
-            'Log in with Google',
-            on_click=st.login,
-            width='stretch',
-            key='google_login_button',
-        )
-        st.caption(
-            'Google login requires Streamlit auth settings in .streamlit/secrets.toml.'
-        )
+        if _is_google_auth_configured():
+            st.button(
+                'Log in with Google',
+                on_click=_safe_google_login,
+                width='stretch',
+                key='google_login_button',
+            )
+        else:
+            st.info(
+                'Google login is unavailable. Add [auth] and [auth.google] to Streamlit secrets.'
+            )
 
         st.divider()
         st.caption('No account? Browse without saving your data.')
@@ -405,15 +446,17 @@ def login_screen(
                 else:
                     st.error(message)
 
-        st.button(
-            'Sign up with Google',
-            on_click=st.login,
-            width='stretch',
-            key='google_register_button',
-        )
-        st.caption(
-            'Google registration requires Streamlit auth settings in .streamlit/secrets.toml.'
-        )
+        if _is_google_auth_configured():
+            st.button(
+                'Sign up with Google',
+                on_click=_safe_google_login,
+                width='stretch',
+                key='google_register_button',
+            )
+        else:
+            st.info(
+                'Google registration is unavailable. Add [auth] and [auth.google] to Streamlit secrets.'
+            )
 
 
 def authenticated_view() -> None:

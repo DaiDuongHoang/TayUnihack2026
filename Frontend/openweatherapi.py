@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from typing import Any
 
 import requests
@@ -13,6 +15,17 @@ FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast'
 
 def get_api_key() -> str:
     apiKey = st.secrets.get('OPENWEATHER_API_KEY', '')
+    if not apiKey:
+        api_section = st.secrets.get('api', {})
+        if isinstance(api_section, Mapping):
+            apiKey = api_section.get('OPENWEATHER_API_KEY', '')
+
+    if not apiKey:
+        apiKey = os.getenv('OPENWEATHER_API_KEY', '')
+
+    if apiKey.startswith('your_'):
+        apiKey = ''
+
     if not apiKey:
         raise ValueError('OpenWeather API key is not configured')
     return apiKey
