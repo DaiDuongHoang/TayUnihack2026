@@ -166,7 +166,7 @@ def _display_weather():
         # If no saved location, show a button that takes the user to the Location page
         if st.button(
             'Set location',
-            use_container_width=True,
+            width='stretch',
             key='go_to_location',
             type='primary',
         ):
