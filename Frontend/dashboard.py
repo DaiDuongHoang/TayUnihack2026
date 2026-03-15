@@ -148,16 +148,23 @@ def _display_wardrobe_preview():
 
 
 def _display_weather():
-    local = st.session_state.get("local_user")
+    # prefer a local account email, fall back to Google email; guests keep session values
+    user_email = st.session_state.get("local_user") or getattr(st.user, "email", None)
 
     # --- Weather ---
     location = None
-    if local:
+    if user_email:
         try:
-            loc = get_user_location(local)
+            loc = get_user_location(user_email)
             location = (loc.get("city", ""), loc.get("country", ""))
         except Exception:
             location = None
+    else:
+        # guest or unauthenticated: use any saved session values if present
+        saved_country = st.session_state.get("saved_country", "")
+        saved_city = st.session_state.get("saved_city", "")
+        if saved_city or saved_country:
+            location = (saved_city, saved_country)
 
     if not location:
         # If no saved location, show a button that takes the user to the Location page

@@ -169,12 +169,13 @@ def get_cities(country):
 # Session state
 countries = get_countries()
 local_user = st.session_state.get("local_user")
+user_email = local_user or getattr(st.user, "email", None)
 
 if "location_owner" not in st.session_state:
     st.session_state.location_owner = None
 
-if st.session_state.location_owner != local_user:
-    stored_location = get_user_location(local_user) if local_user else None
+if st.session_state.location_owner != user_email:
+    stored_location = get_user_location(user_email) if user_email else None
     default_country = countries[0]
     default_city = ""
 
@@ -191,7 +192,7 @@ if st.session_state.location_owner != local_user:
     st.session_state.city = default_city
     st.session_state.saved_country = default_country
     st.session_state.saved_city = default_city
-    st.session_state.location_owner = local_user
+    st.session_state.location_owner = user_email
 
 if "country" not in st.session_state:
     st.session_state.country = countries[0]
@@ -244,9 +245,10 @@ st.markdown("")
 if st.button("**Save Changes**", use_container_width=True, type="primary"):
     st.session_state.saved_country = st.session_state.country
     st.session_state.saved_city = st.session_state.city
-    if local_user:
+    save_email = st.session_state.get("local_user") or getattr(st.user, "email", None)
+    if save_email:
         save_user_location(
-            local_user,
+            save_email,
             st.session_state.saved_country,
             st.session_state.saved_city,
         )
