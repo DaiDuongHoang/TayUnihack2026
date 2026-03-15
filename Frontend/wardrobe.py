@@ -370,7 +370,7 @@ def _edit_wardrobe_item(category, item_index, local_user):
             )
 
         submitted = st.form_submit_button(
-            'Save changes', type='primary', use_container_width=True
+            'Save changes', type='primary', width='stretch'
         )
 
     if not submitted:
@@ -472,7 +472,7 @@ def add_clothe_item():
     upload_entry_ready = has_uploaded_files and bool(clean_item_name)
 
     if upload_entry_ready or manual_entry_ready:
-        if st.button('Submit', type='primary', use_container_width=True):
+        if st.button('Submit', type='primary', width='stretch'):
             local_email = st.session_state.get('local_user')
 
             if has_uploaded_files:
@@ -573,7 +573,7 @@ if st.session_state.selected_category is None:
         'Add Item',
         key='add_item_button',
         type='primary',
-        use_container_width=True,
+        width='stretch',
         icon='➕',
     ):
         add_clothe_item()
@@ -587,7 +587,7 @@ if st.session_state.selected_category is None:
             st.markdown(f'### {category}')
             st.write(f'{len(st.session_state.catalog[category])} item(s)')
             if st.button(
-                f'Open {category}', key=f'cat_{category}', use_container_width=True
+                f'Open {category}', key=f'cat_{category}', width='stretch'
             ):
                 st.session_state.selected_category = category
                 st.rerun()
@@ -646,7 +646,7 @@ else:
                             'Edit',
                             key=f'edit_{st.session_state.selected_category}_{item_index}',
                             type='secondary',
-                            use_container_width=True,
+                            width='stretch',
                         ):
                             _edit_wardrobe_item(
                                 st.session_state.selected_category,
@@ -697,6 +697,6 @@ else:
                                 key=f'{delete_key}_fallback',
                                 type='secondary',
                                 icon='🗑️',
-                                use_container_width=True,
+                                width='stretch',
                             ):
                                 _delete_item()

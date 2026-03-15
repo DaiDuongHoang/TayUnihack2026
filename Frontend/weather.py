@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 import html
 
@@ -956,7 +956,7 @@ class WeatherPage:
             refresh_clicked = st.button(
                 "🔄",
                 key="refresh_weather_button",
-                use_container_width=False,
+                width='content',
                 help="Refresh live weather",
                 type="primary",
             )
@@ -1007,7 +1007,7 @@ class WeatherPage:
                 if st.button(
                     " **Previous Day**",
                     key="chart_prev_day",
-                    use_container_width=True,
+                    width='stretch',
                     type="primary",
                     icon="⬅️",
                 ):
@@ -1030,7 +1030,7 @@ class WeatherPage:
                 if st.button(
                     "**Next Day**",
                     key="chart_next_day",
-                    use_container_width=True,
+                    width='stretch',
                     icon="➡️",
                     type="primary",
                 ):
@@ -1195,7 +1195,7 @@ class WeatherPage:
 
         st.vega_lite_chart(
             chart_spec,
-            use_container_width=True,
+            width='stretch',
             key=f"forecast_chart_{selected_date.isoformat()}_{selected_offset}",
         )
 
@@ -1276,7 +1276,7 @@ class WeatherPage:
             if remaining > 0 and st.button(
                 f"Show more ({remaining} left)",
                 key=show_more_key,
-                use_container_width=True,
+                width='stretch',
             ):
                 st.session_state[anim_action_key] = "expand"
                 st.session_state[anim_tick_key] = int(st.session_state[anim_tick_key]) + 1
@@ -1290,7 +1290,7 @@ class WeatherPage:
             if visible_count > base_visible and st.button(
                 "Show less",
                 key=show_less_key,
-                use_container_width=True,
+                width='stretch',
             ):
                 st.session_state[anim_action_key] = "collapse"
                 st.session_state[anim_tick_key] = int(st.session_state[anim_tick_key]) + 1
