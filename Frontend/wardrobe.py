@@ -11,8 +11,6 @@ from data_backend import (
     update_clothing_item,
 )
 
-danger_delete_button = None
-
 
 CLOTH_TYPE_OPTIONS = [
     '👕 T-Shirt',
@@ -34,6 +32,7 @@ CLOTH_TYPE_OPTIONS = [
 
 CATEGORY_BY_CLOTH_TYPE = {
     '👕 T-Shirt': 'Top 👚',
+    '👕 Shirt': 'Top 👚',
     '👗 Dress': 'Top 👚',
     '🧶 Sweater': 'Top 👚',
     '🩲 Shorts': 'Bottom 🩳',
@@ -250,7 +249,7 @@ GUEST_DEFAULT_ITEMS = {
         {
             'name': 'Denim Jacket',
             'asset': 'Denim jacket.png',
-            'cloth_type': '🧥 Jacket',
+            'cloth_type': '🥼 Coat',
         },
         {
             'name': 'Trench Coat',
@@ -260,7 +259,7 @@ GUEST_DEFAULT_ITEMS = {
         {
             'name': 'Puffer Vest',
             'asset': 'puffer vest.png',
-            'cloth_type': '🧥 Jacket',
+            'cloth_type': '🥼 Coat',
         },
     ],
     'Accessories ⌚': [
@@ -303,9 +302,19 @@ def _plain_cloth_type_name(cloth_type):
     return cloth_type.split(' ', 1)[1] if ' ' in cloth_type else cloth_type
 
 
-def _add_item_to_catalog(name, cloth_type, image=None, color=None, item_id=None):
+def _add_item_to_catalog(name, cloth_type, image=None, color=None, item_id=None, conf=None):
     _ensure_catalog_categories()
-    category = CATEGORY_BY_CLOTH_TYPE.get(cloth_type, 'Accessories ⌚')
+
+    if conf is not None and conf < 0.75:
+        category = "Accessories ⌚"
+    else:
+        if cloth_type in ("👕 T-Shirt", "👕 Shirt", "🧶 Sweater", "👗 Dress"):
+            category = 'Top 👚'
+        elif cloth_type in ("👖 Shorts", "👗 Skirt", "👖 Jeans", "👖 Pants"):
+            category = 'Bottom 🩳'
+        else:
+            category = 'Outerwear 🧥'
+    
     item = {
         'name': name,
         'image': image,
@@ -460,6 +469,37 @@ def add_clothe_item():
         category_pred = category_model.predict(source=img, device='cpu')
         top1_cat_idx = int(category_pred[0].probs.top1)
         selected_cloth_type = category_model.names[top1_cat_idx]
+        category_conf = float(category_pred[0].probs.top1conf)
+
+        if category_conf < 0.75:
+            selected_cloth_type = None
+
+        # Re-tag the predicted cloth type with emoji for better UI display
+        if selected_cloth_type == "t-shirt":
+            selected_cloth_type = '👕 T-Shirt'
+        elif selected_cloth_type == "shirt":
+            selected_cloth_type = '👕 Shirt'
+        elif selected_cloth_type == "sweater":
+            selected_cloth_type = '🧶 Sweater'
+        elif selected_cloth_type == "dress":
+            selected_cloth_type = '👗 Dress'
+        elif selected_cloth_type == "shorts":
+            selected_cloth_type = '👖 Shorts'
+        elif selected_cloth_type == "skirt":
+            selected_cloth_type = '👗 Skirt'
+        elif selected_cloth_type == "jeans":
+            selected_cloth_type = '👖 Jeans'
+        elif selected_cloth_type == "pants":
+            selected_cloth_type = '👖 Pants'
+        elif selected_cloth_type == "blazer":
+            selected_cloth_type = '🧥 Blazer'
+        elif selected_cloth_type == "jacket":
+            selected_cloth_type = '🧥 Jacket'
+        elif selected_cloth_type == "coat":
+            selected_cloth_type = '🥼 Coat'
+        elif selected_cloth_type == "hoodie":
+            selected_cloth_type = '🧥 Hoodie'
+
 
         st.success('Successfully uploaded 1 file!')
     else:
@@ -506,6 +546,7 @@ def add_clothe_item():
                     cloth_type=selected_cloth_type,
                     image=image_data,
                     item_id=item_id,
+                    conf=category_conf,
                 )
                 st.session_state.wardrobe_feedback = f'**Added 1 item to {category}.**'
             else:
@@ -773,23 +814,11 @@ else:
                         delete_key = (
                             f'del_{st.session_state.selected_category}_{item_index}'
                         )
-                        if danger_delete_button is not None:
-                            danger_delete_button(
-                                key=delete_key,
-                                data={
-                                    'start': 'Hold to Delete',
-                                    'continue': 'Keep holding...',
-                                    'completed': 'Deleted',
-                                },
-                                on_confirmed_change=_delete_item,
-                                width='content',
-                            )
-                        else:
-                            if st.button(
-                                'Delete',
-                                key=f'{delete_key}_fallback',
-                                type='secondary',
-                                icon='🗑️',
-                                width='stretch',
-                            ):
-                                _delete_item()
+                        if st.button(
+                            'Delete',
+                            key=f'{delete_key}_fallback',
+                            type='secondary',
+                            icon='🗑️',
+                            width='stretch',
+                        ):
+                            _delete_item()
