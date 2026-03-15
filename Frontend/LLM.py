@@ -1,21 +1,28 @@
 import streamlit as st
 from google.genai import Client
 
+client = Client(api_key=st.secrets['GEMINI_API_KEY'])
 
-def main():
-    st.title('Gemini Streamlit Chatbot')
-
-    # Load API key from Streamlit secrets
-    key = st.secrets['GEMINI_API_KEY']
-    client = Client(api_key=key)
-
-    prompt = st.text_input('Ask something:')
-
-    if prompt:
-        # Generate text using Gemini
-        response = client.generate_text(model='gemini-2.5-flash-lite', prompt=prompt)
-        st.write(response.text)
+system_instruction = """
+You are a wardrobe assistant. Only give clothing suggestions 
+and outfit ideas based on user's preferences and wardrobe. 
+Do not answer unrelated questions.
+"""
 
 
-if __name__ == '__main__':
-    main()
+def get_clothing_suggestion(user_input: str) -> str:
+    prompt = f'{system_instruction}\nUser: {user_input}\nAssistant:'
+
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-lite', contents=prompt
+    )
+    return response.text
+
+
+st.title('Wardrobe Assistant')
+
+user_input = st.text_input('Ask for outfit suggestions:')
+
+if user_input:
+    suggestion = get_clothing_suggestion(user_input)
+    st.write(suggestion)
