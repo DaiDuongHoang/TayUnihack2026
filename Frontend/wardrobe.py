@@ -352,11 +352,61 @@ def _format_predicted_cloth_type(raw_label: str | None) -> str | None:
     return mapping.get(normalized, raw_label)
 
 
+def _extract_image_bytes(uploaded_file) -> bytes | None:
+    if uploaded_file is None:
+        return None
+
+    if isinstance(uploaded_file, np.ndarray):
+        if cv2 is not None:
+            success, encoded = cv2.imencode('.jpg', uploaded_file)
+            if success:
+                return encoded.tobytes()
+            return None
+        try:
+            rgb_image = (
+                uploaded_file[:, :, ::-1] if uploaded_file.ndim == 3 else uploaded_file
+            )
+            buffer = BytesIO()
+            Image.fromarray(rgb_image).save(buffer, format='JPEG')
+            return buffer.getvalue()
+        except Exception:
+            return None
+
+    if isinstance(uploaded_file, Image.Image):
+        try:
+            buffer = BytesIO()
+            uploaded_file.save(buffer, format='JPEG')
+            return buffer.getvalue()
+        except Exception:
+            return None
+
+    if isinstance(uploaded_file, (bytes, bytearray, memoryview)):
+        return bytes(uploaded_file)
+
+    if hasattr(uploaded_file, 'getvalue'):
+        try:
+            data = uploaded_file.getvalue()
+            return bytes(data) if data else None
+        except Exception:
+            return None
+
+    if hasattr(uploaded_file, 'read'):
+        try:
+            data = uploaded_file.read()
+            return bytes(data) if data else None
+        except Exception:
+            return None
+
+    return None
+
+
 def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bool:
     """Add a clothing item from uploaded media using CV classification."""
-    image_data = uploaded_file.getvalue()
+    image_data = _extract_image_bytes(uploaded_file)
     if not image_data:
-        st.error('Could not read image. Please upload a valid file.')
+        st.error(
+            'Could not read image data. Please upload a valid file or capture again.'
+        )
         return False
 
     def _add_without_cv(reason_message: str) -> bool:

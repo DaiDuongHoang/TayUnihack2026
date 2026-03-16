@@ -143,7 +143,7 @@ st.html(css)
 try:
     import av
     from streamlit_webrtc import VideoProcessorBase, WebRtcMode, webrtc_streamer
-except ModuleNotFoundError:
+except Exception:
     av = None
     VideoProcessorBase = object
     WebRtcMode = None
@@ -194,9 +194,9 @@ def capture_frame(frame):
 
     st.toast(f'✅ Saved: {save_path}' if success else f'❌ imwrite failed: {save_path}')
     if success:
-        st.image(frame_to_save, caption='Captured Frame', use_column_width=True)
+        st.image(frame_to_save, caption='Captured Frame', width='stretch')
         local_email = st.session_state.get('local_user')
-        clean_item_name = filename.strip('.*jpg|jpeg|png|webp')
+        clean_item_name = os.path.splitext(filename)[0]
 
         addclothemedia(frame_to_save, clean_item_name, local_email)
 

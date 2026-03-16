@@ -217,6 +217,12 @@ def _weather_appropriate_items(
 def get_clothing_suggestion(
     user_input: str, wardrobe_items: list[dict[str, str]]
 ) -> str:
+    if Client is None:
+        return (
+            'Google GenAI client is unavailable in this deployment. '
+            'Install google-genai and redeploy.'
+        )
+
     api_key = st.secrets.get('GEMINI_API_KEY', '')
     if not api_key:
         api_section = st.secrets.get('api', {})
