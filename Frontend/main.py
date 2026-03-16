@@ -15,11 +15,13 @@ def _resolve_asset(*relative_paths: str) -> Path | None:
 
 
 LOGO_BIG = _resolve_asset(
+    'logo_and_icons/logobig2.png',
     'logo_and_icons/Logobig2.png',
     'logo_and_icons/logo_big.png',
     'logo/Logobig2.png',
 )
 LOGO_ICON = _resolve_asset(
+    'logo_and_icons/logosmall2.png',
     'logo_and_icons/Logosmall2.png',
     'logo_and_icons/logo_small.png',
     'logo_and_icons/icon.png',

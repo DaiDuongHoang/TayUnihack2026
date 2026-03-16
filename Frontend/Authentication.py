@@ -187,6 +187,7 @@ def _inject_auth_styles() -> None:
     project_root = Path(__file__).resolve().parent.parent
     icon_path = None
     for rel_path in (
+        'logo_and_icons/logosmall2.png',
         'logo_and_icons/icon.png',
         'logo_and_icons/Logosmall2.png',
         'logo/icon.png',
