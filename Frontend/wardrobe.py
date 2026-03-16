@@ -354,22 +354,62 @@ def _format_predicted_cloth_type(raw_label: str | None) -> str | None:
 
 def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bool:
     """Add a clothing item from uploaded media using CV classification."""
+    image_data = uploaded_file.getvalue()
+    if not image_data:
+        st.error('Could not read image. Please upload a valid file.')
+        return False
+
+    def _add_without_cv(reason_message: str) -> bool:
+        item_id = None
+        if local_email:
+            item_id = add_clothing_item(
+                email=local_email,
+                item_name=item_name,
+                image_data=image_data,
+            )
+
+        category = _add_item_to_catalog(
+            name=item_name,
+            cloth_type=None,
+            image=image_data,
+            color=None,
+            item_id=item_id,
+            conf=0.0,
+        )
+        st.session_state.wardrobe_feedback = (
+            f'{reason_message} Added 1 item to {category}.'
+        )
+        return True
+
     try:
         from ultralytics import YOLO
-    except ModuleNotFoundError:
-        st.error('Image auto-detection is unavailable (ultralytics not installed).')
-        return False
+    except Exception:
+        return _add_without_cv(
+            'Image auto-detection is unavailable in this deployment.'
+        )
 
     current_path = os.path.dirname(__file__)
     parent_path = os.path.dirname(current_path)
-    color_cls_path = os.path.join(parent_path, 'models', 'best_color_cls.pt')
-    category_cls_path = os.path.join(parent_path, 'models', 'best_category_cls.pt')
+    model_dirs = [
+        os.path.join(parent_path, 'computervision', 'models'),
+        os.path.join(parent_path, 'models'),
+        os.path.join(current_path, 'models'),
+    ]
 
-    if not os.path.exists(color_cls_path) or not os.path.exists(category_cls_path):
+    color_cls_path = None
+    category_cls_path = None
+    for model_dir in model_dirs:
+        candidate_color = os.path.join(model_dir, 'best_color_cls.pt')
+        candidate_category = os.path.join(model_dir, 'best_category_cls.pt')
+        if os.path.exists(candidate_color) and os.path.exists(candidate_category):
+            color_cls_path = candidate_color
+            category_cls_path = candidate_category
+            break
+
+    if not color_cls_path or not category_cls_path:
         st.error('Model files are missing. Please check the models folder.')
         return False
 
-    image_data = uploaded_file
     if cv2 is not None:
         file_bytes = np.asarray(bytearray(image_data), dtype=np.uint8)
         img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
@@ -381,21 +421,23 @@ def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bo
             img = None
 
     if img is None:
-        st.error('Could not read image. Please upload a valid file.')
-        return False
+        return _add_without_cv('Could not analyze image automatically.')
 
-    color_model = YOLO(str(color_cls_path))
-    category_model = YOLO(str(category_cls_path))
+    try:
+        color_model = YOLO(str(color_cls_path))
+        category_model = YOLO(str(category_cls_path))
 
-    color_pred = color_model.predict(source=img, device='cpu')
-    top1_color_idx = int(color_pred[0].probs.top1)
-    predicted_color = color_model.names[top1_color_idx]
+        color_pred = color_model.predict(source=img, device='cpu')
+        top1_color_idx = int(color_pred[0].probs.top1)
+        predicted_color = color_model.names[top1_color_idx]
 
-    category_pred = category_model.predict(source=img, device='cpu')
-    top1_cat_idx = int(category_pred[0].probs.top1)
-    category_conf = float(category_pred[0].probs.top1conf)
-    raw_cloth_type = str(category_model.names[top1_cat_idx])
-    selected_cloth_type = _format_predicted_cloth_type(raw_cloth_type)
+        category_pred = category_model.predict(source=img, device='cpu')
+        top1_cat_idx = int(category_pred[0].probs.top1)
+        category_conf = float(category_pred[0].probs.top1conf)
+        raw_cloth_type = str(category_model.names[top1_cat_idx])
+        selected_cloth_type = _format_predicted_cloth_type(raw_cloth_type)
+    except Exception:
+        return _add_without_cv('Could not analyze image automatically.')
 
     if category_conf < 0.55:
         selected_cloth_type = None

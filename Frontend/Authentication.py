@@ -17,18 +17,27 @@ def _is_non_placeholder(value: str) -> bool:
 
 
 def _is_google_auth_configured() -> bool:
-    auth = st.secrets.get('auth', {})
+    try:
+        auth = st.secrets.get('auth', {})
+    except Exception:
+        return False
+
     if not isinstance(auth, Mapping):
         return False
 
     redirect_uri = str(auth.get('redirect_uri', ''))
     cookie_secret = str(auth.get('cookie_secret', ''))
-    google_cfg = auth.get('google', {})
-    if not isinstance(google_cfg, Mapping):
-        return False
+    server_metadata_url = str(auth.get('server_metadata_url', ''))
 
-    client_id = str(google_cfg.get('client_id', ''))
-    client_secret = str(google_cfg.get('client_secret', ''))
+    # Accept both Streamlit's official flat config and legacy nested config.
+    client_id = str(auth.get('client_id', ''))
+    client_secret = str(auth.get('client_secret', ''))
+    if not (client_id and client_secret and server_metadata_url):
+        google_cfg = auth.get('google', {})
+        if isinstance(google_cfg, Mapping):
+            client_id = str(google_cfg.get('client_id', ''))
+            client_secret = str(google_cfg.get('client_secret', ''))
+            server_metadata_url = str(google_cfg.get('server_metadata_url', ''))
 
     return all(
         [
@@ -36,16 +45,22 @@ def _is_google_auth_configured() -> bool:
             _is_non_placeholder(cookie_secret),
             _is_non_placeholder(client_id),
             _is_non_placeholder(client_secret),
+            _is_non_placeholder(server_metadata_url),
         ]
     )
 
 
 def _safe_google_login() -> None:
     try:
-        st.login('google')
-    except Exception:
+        auth = st.secrets.get('auth', {})
+        # Use named provider only when [auth.google] exists.
+        if isinstance(auth, Mapping) and isinstance(auth.get('google'), Mapping):
+            st.login('google')
+        else:
+            st.login()
+    except Exception as exc:
         st.error(
-            'Google login is misconfigured. Add [auth] and [auth.google] in Streamlit secrets.'
+            f'Google login is misconfigured. Verify [auth] values for redirect_uri, cookie_secret, client_id, client_secret, and server_metadata_url. Details: {exc}'
         )
 
 
@@ -395,7 +410,7 @@ def login_screen(
             )
         else:
             st.info(
-                'Google login is unavailable. Add [auth] and [auth.google] to Streamlit secrets.'
+                'Google login is unavailable. Add [auth] secrets for redirect_uri, cookie_secret, client_id, client_secret, and server_metadata_url.'
             )
 
         st.divider()
@@ -455,7 +470,7 @@ def login_screen(
             )
         else:
             st.info(
-                'Google registration is unavailable. Add [auth] and [auth.google] to Streamlit secrets.'
+                'Google registration is unavailable. Add [auth] secrets for redirect_uri, cookie_secret, client_id, client_secret, and server_metadata_url.'
             )
 
 
