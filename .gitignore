@@ -254,3 +254,7 @@ yolo26n.pt
 
 # Ignore testing operations
 *testing*
+
+#secrets
+.streamlit/secrets.toml
+**/.streamlit/secrets.toml
