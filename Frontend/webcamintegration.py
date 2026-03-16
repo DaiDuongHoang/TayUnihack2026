@@ -1,5 +1,7 @@
 import os
+import json
 import threading
+from collections.abc import Mapping
 import streamlit as st
 from PIL import Image
 from datetime import datetime
@@ -166,6 +168,77 @@ class SnapshotProcessor(VideoProcessorBase):
             return None if self._latest_frame is None else self._latest_frame.copy()
 
 
+def _build_rtc_configuration() -> tuple[dict, bool]:
+    """Build ICE settings with safe defaults and optional TURN override."""
+
+    def _to_plain_data(value):
+        if isinstance(value, Mapping):
+            return {str(k): _to_plain_data(v) for k, v in dict(value).items()}
+        if isinstance(value, list):
+            return [_to_plain_data(item) for item in value]
+        if isinstance(value, tuple):
+            return [_to_plain_data(item) for item in value]
+        return value
+
+    default_ice_servers = [
+        {
+            'urls': [
+                'stun:stun.l.google.com:19302',
+                'stun:stun1.l.google.com:19302',
+            ]
+        }
+    ]
+
+    # Preferred: explicit list in Streamlit secrets.
+    try:
+        webrtc_config = st.secrets.get('webrtc', {})
+        secret_ice_servers = webrtc_config.get('iceServers')
+        if secret_ice_servers:
+            plain_ice_servers = _to_plain_data(secret_ice_servers)
+            has_turn = any(
+                any('turn:' in str(url).lower() for url in server.get('urls', []))
+                for server in plain_ice_servers
+            )
+            return {'iceServers': list(plain_ice_servers)}, has_turn
+    except Exception:
+        pass
+
+    # Alternate: JSON blob via env var.
+    raw_ice_servers = os.getenv('WEBRTC_ICE_SERVERS_JSON', '').strip()
+    if raw_ice_servers:
+        try:
+            env_ice_servers = json.loads(raw_ice_servers)
+            if isinstance(env_ice_servers, list) and env_ice_servers:
+                has_turn = any(
+                    any('turn:' in str(url).lower() for url in server.get('urls', []))
+                    for server in env_ice_servers
+                )
+                return {'iceServers': env_ice_servers}, has_turn
+        except json.JSONDecodeError:
+            st.warning(
+                'Invalid WEBRTC_ICE_SERVERS_JSON. Falling back to default STUN config.'
+            )
+
+    # Fallback: single TURN server from env vars.
+    turn_urls = [
+        url.strip() for url in os.getenv('TURN_URLS', '').split(',') if url.strip()
+    ]
+    turn_username = os.getenv('TURN_USERNAME', '').strip()
+    turn_credential = os.getenv('TURN_CREDENTIAL', '').strip()
+
+    has_turn = False
+    if turn_urls:
+        turn_server = {'urls': turn_urls}
+        if turn_username:
+            turn_server['username'] = turn_username
+        if turn_credential:
+            turn_server['credential'] = turn_credential
+        default_ice_servers.append(turn_server)
+        has_turn = any('turn:' in url.lower() for url in turn_urls)
+
+    return {'iceServers': default_ice_servers}, has_turn
+
+
 # ---------------------------------------------------------------------------
 # Capture a single frame and save it to disk
 # ---------------------------------------------------------------------------
@@ -206,6 +279,8 @@ st.set_page_config(page_title='Webcam Stream', layout='wide')
 if 'webcam_instance' not in st.session_state:
     st.session_state.webcam_instance = 1
 
+rtc_configuration, has_turn_server = _build_rtc_configuration()
+
 # ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
@@ -224,6 +299,7 @@ with left_col:
     webrtc_ctx = webrtc_streamer(
         key=f'stable-webcam-{st.session_state.webcam_instance}',
         mode=WebRtcMode.SENDRECV,
+        rtc_configuration=rtc_configuration,
         media_stream_constraints={
             'video': {
                 'width': {'ideal': 1280, 'max': 1920},
@@ -247,6 +323,14 @@ with right_col:
     st.caption(
         'Use Start/Stop on the webcam widget. If camera disappears, press Restart Camera.'
     )
+    st.caption(
+        f'ICE servers configured: {len(rtc_configuration.get("iceServers", []))}'
+    )
+    if not has_turn_server:
+        st.warning(
+            'TURN server is not configured. Camera may fail on restricted networks. '
+            'Set `webrtc.iceServers` in `.streamlit/secrets.toml` for stable connection.'
+        )
 
     if st.button('🔄 Restart Camera', width='stretch'):
         st.session_state.webcam_instance += 1
@@ -261,3 +345,7 @@ with right_col:
 
     if not webrtc_ctx.state.playing:
         st.info('Camera is idle. Click Start above to begin live preview.')
+        st.caption(
+            'If no camera appears, allow browser camera permission, use HTTPS/localhost, '
+            'then click Restart Camera.'
+        )
