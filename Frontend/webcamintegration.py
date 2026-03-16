@@ -6,6 +6,7 @@ import streamlit as st
 from PIL import Image
 from datetime import datetime
 from wardrobe import addclothemedia
+from Authentication import is_authenticated, login_screen
 
 try:
     import cv2
@@ -275,6 +276,13 @@ def capture_frame(frame):
 
 
 st.set_page_config(page_title='Webcam Stream', layout='wide')
+
+if not is_authenticated():
+    login_screen(
+        title='Sign in to use AI Webcam',
+        description='Log in with Google or your local account to access webcam capture.',
+    )
+    st.stop()
 
 if 'webcam_instance' not in st.session_state:
     st.session_state.webcam_instance = 1
