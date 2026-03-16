@@ -373,34 +373,36 @@ def login_screen(
             else:
                 st.error(message)
 
-        with st.expander('Forgot your password?'):
-            with st.form('forgot_password_form'):
-                fp_email = st.text_input(
-                    'Email', placeholder='Enter your account email', key='fp_email'
+        with st.expander('Change password'):
+            with st.form('change_password_form_login'):
+                cp_email = st.text_input(
+                    'Email', placeholder='Enter your account email', key='cp_email'
                 )
-                fp_current_password = st.text_input(
-                    'Current password', type='password', key='fp_current_pw'
+                cp_current_password = st.text_input(
+                    'Current password', type='password', key='cp_current_pw'
                 )
-                fp_new_password = st.text_input(
-                    'New password', type='password', key='fp_new_pw'
+                cp_new_password = st.text_input(
+                    'New password', type='password', key='cp_new_pw'
                 )
-                fp_confirm_password = st.text_input(
-                    'Confirm new password', type='password', key='fp_confirm_pw'
+                cp_confirm_password = st.text_input(
+                    'Confirm new password', type='password', key='cp_confirm_pw'
                 )
-                fp_submitted = st.form_submit_button('Reset Password', width='stretch')
-            if fp_submitted:
-                if not fp_current_password:
+                cp_submitted = st.form_submit_button('Change Password', width='stretch')
+            if cp_submitted:
+                if not cp_email.strip():
+                    st.error('Please enter your account email.')
+                elif not cp_current_password:
                     st.error('Please enter your current password.')
-                elif fp_new_password != fp_confirm_password:
-                    st.error('Passwords do not match.')
+                elif cp_new_password != cp_confirm_password:
+                    st.error('New passwords do not match.')
                 else:
-                    fp_success, fp_message = change_user_password(
-                        fp_email, fp_current_password, fp_new_password
+                    cp_success, cp_message = change_user_password(
+                        cp_email, cp_current_password, cp_new_password
                     )
-                    if fp_success:
-                        st.success(fp_message)
+                    if cp_success:
+                        st.success(cp_message)
                     else:
-                        st.error(fp_message)
+                        st.error(cp_message)
 
         st.caption('Or continue with Google')
         if _is_google_auth_configured():
