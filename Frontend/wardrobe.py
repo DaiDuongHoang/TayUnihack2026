@@ -56,6 +56,8 @@ CATEGORY_BY_CLOTH_TYPE = {
     '🧤 Gloves': 'Accessories ⌚',
 }
 
+CATEGORY_CONFIDENCE_THRESHOLD = 0.55
+
 if not is_authenticated():
     login_screen(
         title='Sign in to access your wardrobe',
@@ -300,7 +302,7 @@ def _add_item_to_catalog(
 ):
     _ensure_catalog_categories()
 
-    if conf is not None and conf < 0.75:
+    if conf is not None and conf < CATEGORY_CONFIDENCE_THRESHOLD:
         category = 'Accessories ⌚'
     else:
         if cloth_type in ('👕 T-Shirt', '👕 Shirt', '🧶 Sweater', '👗 Dress'):
@@ -489,7 +491,7 @@ def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bo
     except Exception:
         return _add_without_cv('Could not analyze image automatically.')
 
-    if category_conf < 0.55:
+    if category_conf < CATEGORY_CONFIDENCE_THRESHOLD:
         selected_cloth_type = None
 
     item_id = None
