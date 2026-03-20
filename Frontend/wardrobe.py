@@ -435,9 +435,11 @@ def addclothemedia(uploaded_file, item_name: str, local_email: str | None) -> bo
 
     try:
         from ultralytics import YOLO
-    except Exception:
+    except Exception as exc:
+        error_name = type(exc).__name__
         return _add_without_cv(
-            'Image auto-detection is unavailable in this deployment.'
+            'Image auto-detection is unavailable in this deployment '
+            f'(YOLO import failed: {error_name}).'
         )
 
     current_path = os.path.dirname(__file__)
