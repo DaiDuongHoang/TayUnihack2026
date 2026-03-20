@@ -935,7 +935,7 @@ else:
                             _edit_wardrobe_item(
                                 st.session_state.selected_category,
                                 item_index,
-                                local_user,
+                                active_user_email,
                             )
 
                         def _delete_item(idx=item_index):
@@ -947,8 +947,10 @@ else:
                                 if isinstance(item_to_remove, dict)
                                 else None
                             )
-                            if local_user and item_id is not None:
-                                deleted = delete_clothing_item(local_user, int(item_id))
+                            if active_user_email and item_id is not None:
+                                deleted = delete_clothing_item(
+                                    active_user_email, int(item_id)
+                                )
                                 if not deleted:
                                     st.session_state.wardrobe_feedback = (
                                         'Could not delete item.'
