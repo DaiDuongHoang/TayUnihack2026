@@ -5,7 +5,7 @@ import re
 from io import BytesIO
 from pathlib import Path
 from PIL import Image
-from Authentication import is_authenticated, login_screen
+from Authentication import is_authenticated, is_guest, login_screen
 from data_backend import (
     add_clothing_item,
     delete_clothing_item,
@@ -682,7 +682,7 @@ def add_clothe_item():
 
     if upload_entry_ready or manual_entry_ready:
         if st.button('Submit', type='primary', width='stretch'):
-            local_email = st.session_state.get('local_user')
+            local_email = _get_active_user_email()
 
             added = False
             if has_uploaded_files:
@@ -720,23 +720,42 @@ def _catalog_has_any_items(catalog: dict) -> bool:
     return any(bool(items) for items in catalog.values())
 
 
+def _get_active_user_email() -> str | None:
+    if is_guest():
+        return None
+    local_email = st.session_state.get('local_user')
+    if local_email:
+        return str(local_email)
+    google_email = getattr(st.user, 'email', '')
+    return str(google_email) if google_email else None
+
+
 # !!! Clothes catalogue !!!
-local_user = st.session_state.get('local_user')
+guest_session = is_guest()
+active_user_email = _get_active_user_email()
+catalog_owner_token = (
+    ('guest', None)
+    if guest_session
+    else ('user', active_user_email or getattr(st.user, 'sub', 'unknown-user'))
+)
+
 if 'catalog_owner' not in st.session_state:
     st.session_state.catalog_owner = None
 
 catalog_missing = 'catalog' not in st.session_state
-owner_changed = st.session_state.catalog_owner != local_user
-guest_catalog_empty = local_user is None and (
+owner_changed = st.session_state.catalog_owner != catalog_owner_token
+guest_catalog_empty = guest_session and (
     catalog_missing or not _catalog_has_any_items(st.session_state.get('catalog'))
 )
 
 if catalog_missing or owner_changed or guest_catalog_empty:
-    if local_user:
-        st.session_state.catalog = get_user_catalog(local_user)
-    else:
+    if guest_session:
         st.session_state.catalog = _default_catalog()
-    st.session_state.catalog_owner = local_user
+    else:
+        st.session_state.catalog = (
+            get_user_catalog(active_user_email) if active_user_email else {}
+        )
+    st.session_state.catalog_owner = catalog_owner_token
 
 categories = list(st.session_state.catalog.keys())
 
