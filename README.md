@@ -1,7 +1,5 @@
 # 👕 Taylr – Your Smart Wardrobe Assistant
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge.svg)](https://tayunihack2026.streamlit.app/)
-
 ## 🧠 Inspiration
 Many people choose outfits without considering the weather, leading to discomfort or health issues. We built **Taylr** to bridge the gap between your closet and the forecast, ensuring you're always prepared for the day ahead.
 
